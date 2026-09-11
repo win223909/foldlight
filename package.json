@@ -1,0 +1,16 @@
+{
+  "name": "foldlight",
+  "version": "0.3.6",
+  "private": true,
+  "description": "Cross-platform glass and folding experiments",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "npm --prefix web start",
+    "build": "npm --prefix web run build",
+    "test": "npm --prefix web test",
+    "check:public": "python3 scripts/check_public.py"
+  }
+}

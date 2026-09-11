@@ -1,0 +1,36 @@
+name: Bug report / 问题反馈
+description: Report a reproducible issue on web, iPhone, Mac or Fold8.
+title: "[Bug] "
+body:
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform / 平台
+      options: [Web, iPhone, macOS, Fold8, Analytics]
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: App version, device model and OS / 版本、型号、系统
+      description: Do not include device serial numbers.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps / 复现步骤
+      description: Include opening/closing direction and affected screen for fold issues.
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and actual behavior / 预期和实际效果
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Redacted evidence / 已脱敏的截图或日志
+      description: Remove personal images, IP addresses, tokens and identifiers before attaching.

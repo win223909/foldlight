@@ -1,0 +1,31 @@
+plugins { id 'com.android.application' }
+android {
+    namespace 'com.zksaga.foldlight'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'com.zksaga.foldlight'
+        minSdk 30
+        targetSdk 35
+        versionCode 28
+        versionName '0.3.6'
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+    }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+    buildFeatures { buildConfig true; aidl true }
+    buildTypes { release { minifyEnabled false } }
+}
+def leaseSource = layout.buildDirectory.dir('generated/lease')
+tasks.register('prepareDualLease', Sync) { from('../tools/DualScreenLease.java'); into(leaseSource) }
+android.sourceSets.main.java.srcDir(leaseSource)
+tasks.named('preBuild').configure { dependsOn('prepareDualLease') }
+dependencies {
+    implementation 'dev.rikka.shizuku:api:13.1.5'
+    implementation 'dev.rikka.shizuku:provider:13.1.5' 
+    implementation 'androidx.core:core:1.13.1'
+    implementation 'androidx.annotation:annotation:1.8.2'
+    implementation 'androidx.window:window:1.3.0'
+    implementation 'androidx.window:window-java:1.3.0'
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test:runner:1.6.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+}

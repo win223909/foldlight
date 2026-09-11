@@ -1,0 +1,6 @@
+import {publicFiles} from './files.mjs';
+import http from 'node:http';import {readFile} from 'node:fs/promises';import path from 'node:path';import {fileURLToPath} from 'node:url';
+const root=path.dirname(fileURLToPath(import.meta.url)),port=Number(process.env.FOLDLIGHT_PORT||4178);
+const files=new Set(publicFiles);
+const types={apk:'application/vnd.android.package-archive',dmg:'application/octet-stream',txt:'text/plain; charset=utf-8',sha256:'text/plain; charset=utf-8',png:'image/png',html:'text/html; charset=utf-8',js:'text/javascript; charset=utf-8',css:'text/css; charset=utf-8',svg:'image/svg+xml'};
+http.createServer(async(req,res)=>{let name;try{name=new URL(req.url,'http://localhost').pathname.slice(1)||'index.html'}catch{res.writeHead(400);res.end();return}if(!['GET','HEAD'].includes(req.method)||!files.has(name)){res.writeHead(404);res.end();return}try{const data=await readFile(path.join(root,name));res.writeHead(200,{'Content-Type':types[name.split('.').pop()],'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(req.method==='HEAD'?undefined:data)}catch{res.writeHead(404);res.end()}}).listen(port,'127.0.0.1',()=>console.log(`Duo: http://127.0.0.1:${port}`));
