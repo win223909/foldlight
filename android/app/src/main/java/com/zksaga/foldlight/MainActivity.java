@@ -63,7 +63,7 @@ public final class MainActivity extends Activity implements SensorEventListener,
     private Bitmap coverImage,innerImage;
     private ScreenPictures pictures;
     private Boolean mainCover;
-    private boolean coverDimmingEnabled=true;
+    private boolean coverDimmingEnabled=true,referenceGlass=true;
     private final CoverDimming coverDimming=new CoverDimming();
     private final InnerDimming innerDimming=new InnerDimming();
     private float innerLight=1,innerLightStart=EffectDefaults.INNER_LIGHT_START,innerDarkStart=EffectDefaults.INNER_DARK_START;
@@ -109,6 +109,7 @@ public final class MainActivity extends Activity implements SensorEventListener,
         if(saved!=null)innerDimming.restore(saved.getFloat("innerLightState",Float.NaN));
         if(saved!=null)coverDimming.restore(saved.getFloat("coverLightState",Float.NaN));
         innerStrength=settings.getFloat("innerStrength",EffectDefaults.INNER);coverMaxAngle=FoldMath.clamp(settings.getFloat("coverMaxAngle",EffectDefaults.COVER),0,180);softness=settings.getFloat("softness",EffectDefaults.SOFTNESS);frost=settings.getFloat("frost",EffectDefaults.FROST);
+        referenceGlass=settings.getBoolean("referenceGlass",true);
         motionProfiles=MotionSettings.load(settings);coverFrost=FoldMath.clamp(settings.getFloat("coverFrost",frost),0,1);innerFrost=FoldMath.clamp(settings.getFloat("innerFrost",frost),0,1);coverGradient=FoldMath.clamp(settings.getFloat("coverGradient",1),0,1);innerGradient=FoldMath.clamp(settings.getFloat("innerGradient",1),0,1);
         if(saved!=null){coverDeformation.restore(saved.getFloatArray("coverDeformation"));innerDeformation.restore(saved.getFloatArray("innerDeformation"));}
         manual=settings.getFloat("manual",120);mode=settings.getString("mode","sensor");hidden=settings.getBoolean("hidden",false);
@@ -123,7 +124,7 @@ public final class MainActivity extends Activity implements SensorEventListener,
         innerLight=innerDimming.step(displayed,innerLightStart,innerDarkStart);
         coverTilt=coverDeformation.step(displayed,0,coverMaxAngle,innerStrength,motionProfiles[0],motionProfiles[1]);
         innerTilt=innerDeformation.step(displayed,0,coverMaxAngle,innerStrength,motionProfiles[2],motionProfiles[3]);
-        renderer.visualTilt=mainCover?coverTilt:innerTilt;renderer.frostGradient=mainCover?coverGradient:innerGradient;
+        renderer.referenceGlass=referenceGlass;renderer.visualTilt=mainCover?coverTilt:innerTilt;renderer.frostGradient=mainCover?coverGradient:innerGradient;
         renderer.innerBrightness=innerLight;renderer.innerRevealEnabled=true;renderer.coverMaxAngle=mainCover?coverMaxAngle:-1;renderer.strength=innerStrength;renderer.blur=mainCover?coverFrost:innerFrost;
         surface.setRenderer(renderer);surface.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
         ((FoldSurface)surface).setSettingsAction(()->{if(hidden)setHidden(false);});
@@ -186,6 +187,8 @@ public final class MainActivity extends Activity implements SensorEventListener,
     }
     private void buildPanel(){
         panel=new SettingsPanel(this,coverImage,innerImage,manual,innerStrength,coverMaxAngle,softness,coverFrost,coverDimmingEnabled,darkStart,lightStart,innerLightStart,innerDarkStart,motionProfiles,innerFrost,coverGradient,innerGradient,new SettingsPanel.Actions(){
+            public boolean referenceGlassEnabled(){return referenceGlass;}
+            public void referenceGlass(boolean value){referenceGlass=value;saveMotionSettings();dirty=true;}
             public void localInput(){enableLocalInput();}
             public void photo(boolean cover){chooseImage(cover);}
             public void fullscreen(){setHidden(true);}
@@ -215,7 +218,7 @@ public final class MainActivity extends Activity implements SensorEventListener,
         GradientDrawable noticeBackground=new GradientDrawable();noticeBackground.setColor(0xee24242a);noticeBackground.setCornerRadius(dp(14));inputNotice.setBackground(noticeBackground);
         root.addView(inputNotice,new FrameLayout.LayoutParams(-2,-2,Gravity.TOP|Gravity.CENTER_HORIZONTAL));
     }
-    private void saveMotionSettings(){SharedPreferences.Editor edit=getPreferences(MODE_PRIVATE).edit();MotionSettings.save(edit,motionProfiles);edit.putFloat("coverFrost",coverFrost).putFloat("innerFrost",innerFrost).putFloat("coverGradient",coverGradient).putFloat("innerGradient",innerGradient).putBoolean("coverDimming",coverDimmingEnabled).putFloat("darkStart",darkStart).putFloat("lightStart",lightStart).putFloat("innerLightStart",innerLightStart).putFloat("innerDarkStart",innerDarkStart).putFloat("innerStrength",innerStrength).putFloat("coverMaxAngle",coverMaxAngle).putFloat("softness",softness).putFloat("frost",frost).apply();}
+    private void saveMotionSettings(){SharedPreferences.Editor edit=getPreferences(MODE_PRIVATE).edit();MotionSettings.save(edit,motionProfiles);edit.putBoolean("referenceGlass",referenceGlass).putFloat("coverFrost",coverFrost).putFloat("innerFrost",innerFrost).putFloat("coverGradient",coverGradient).putFloat("innerGradient",innerGradient).putBoolean("coverDimming",coverDimmingEnabled).putFloat("darkStart",darkStart).putFloat("lightStart",lightStart).putFloat("innerLightStart",innerLightStart).putFloat("innerDarkStart",innerDarkStart).putFloat("innerStrength",innerStrength).putFloat("coverMaxAngle",coverMaxAngle).putFloat("softness",softness).putFloat("frost",frost).apply();}
     private int dp(float x){return Math.round(x*getResources().getDisplayMetrics().density);}
     private void selectMode(String value){mode=value;dualAllowed=resumed&&hidden&&mode.equals("sensor");animating=false;pendingAuto=false;dirty=true;note("mode",mode);if(mode.equals("auto"))play();updateStatus();updateInputNotice();}
     private void updateInputNotice(){
@@ -307,8 +310,8 @@ public final class MainActivity extends Activity implements SensorEventListener,
         boolean needsDraw=dirty||animating||Math.abs(renderer.hinge-renderAngle)>.005f;
         renderer.hinge=renderAngle;renderer.splitEnabled=true;
         if(mainCover==null||mainCover!=cover){mainCover=cover;renderer.setImage(cover?coverImage:innerImage);dirty=true;needsDraw=true;}
-        renderer.visualTilt=cover?coverTilt:innerTilt;renderer.frostGradient=cover?coverGradient:innerGradient;renderer.innerRevealEnabled=true;renderer.innerBrightness=innerLight;renderer.coverBrightness=coverLight;renderer.split=cover?0:.5f;renderer.horizontal=false;renderer.moveRight=cover;renderer.strength=innerStrength;renderer.coverMaxAngle=cover?coverMaxAngle:-1;renderer.blur=cover?coverFrost:innerFrost;
-        if(secondaryPresentation!=null){secondaryPresentation.renderer.visualTilt=secondaryPresentation.cover?coverTilt:innerTilt;secondaryPresentation.renderer.frostGradient=secondaryPresentation.cover?coverGradient:innerGradient;secondaryPresentation.renderer.coverBrightness=coverLight;secondaryPresentation.renderer.innerBrightness=innerLight;secondaryPresentation.renderer.strength=innerStrength;secondaryPresentation.renderer.coverMaxAngle=secondaryPresentation.cover?coverMaxAngle:-1;secondaryPresentation.renderer.blur=secondaryPresentation.cover?coverFrost:innerFrost;secondaryPresentation.render(displayed,dirty);}
+        renderer.referenceGlass=referenceGlass;renderer.visualTilt=cover?coverTilt:innerTilt;renderer.frostGradient=cover?coverGradient:innerGradient;renderer.innerRevealEnabled=true;renderer.innerBrightness=innerLight;renderer.coverBrightness=coverLight;renderer.split=cover?0:.5f;renderer.horizontal=false;renderer.moveRight=cover;renderer.strength=innerStrength;renderer.coverMaxAngle=cover?coverMaxAngle:-1;renderer.blur=cover?coverFrost:innerFrost;
+        if(secondaryPresentation!=null){secondaryPresentation.renderer.referenceGlass=referenceGlass;secondaryPresentation.renderer.visualTilt=secondaryPresentation.cover?coverTilt:innerTilt;secondaryPresentation.renderer.frostGradient=secondaryPresentation.cover?coverGradient:innerGradient;secondaryPresentation.renderer.coverBrightness=coverLight;secondaryPresentation.renderer.innerBrightness=innerLight;secondaryPresentation.renderer.strength=innerStrength;secondaryPresentation.renderer.coverMaxAngle=secondaryPresentation.cover?coverMaxAngle:-1;secondaryPresentation.renderer.blur=secondaryPresentation.cover?coverFrost:innerFrost;secondaryPresentation.render(displayed,dirty);}
         if(needsDraw){surface.requestRender();dirty=false;}
         if(time-lastStatus>500_000_000L){drawRate=lastStatus==0?0:(renderer.draws-previousDraws)/((time-lastStatus)/1e9f);previousDraws=renderer.draws;lastStatus=time;if(!hidden)updateStatus();}
         if(time-lastSample>1_000_000_000L){lastSample=time;note("frame",String.format(Locale.US,"angle=%.2f,draws=%d,max_callback_ms=%.1f,surface=%dx%d,secondary_draws=%d,secondary_gl=%s,pivot=%.2f",displayed,renderer.draws,maxFrameMs,renderer.surfaceWidth,renderer.surfaceHeight,secondaryPresentation==null?0:secondaryPresentation.renderer.draws,secondaryPresentation==null?"none":secondaryPresentation.renderer.error,renderer.split));}
@@ -334,7 +337,7 @@ public final class MainActivity extends Activity implements SensorEventListener,
             secondaryPresentation=new SecondaryPresentation(this,candidate,cover?coverImage:innerImage,displayed,cover,coverMaxAngle,innerStrength,frost,()->setHidden(false));
             SecondaryPresentation created=secondaryPresentation;
             created.setOnDismissListener(dialog->{if(secondaryPresentation==created){secondaryPresentation=null;if(resumed)root.post(this::refreshCover);}});
-            created.renderer.visualTilt=cover?coverTilt:innerTilt;created.renderer.frostGradient=cover?coverGradient:innerGradient;created.renderer.blur=cover?coverFrost:innerFrost;created.renderer.innerRevealEnabled=true;created.renderer.innerBrightness=innerLight;created.renderer.coverBrightness=coverLight;created.show();
+            created.renderer.referenceGlass=referenceGlass;created.renderer.visualTilt=cover?coverTilt:innerTilt;created.renderer.frostGradient=cover?coverGradient:innerGradient;created.renderer.blur=cover?coverFrost:innerFrost;created.renderer.innerRevealEnabled=true;created.renderer.innerBrightness=innerLight;created.renderer.coverBrightness=coverLight;created.show();
             note("secondary","presentation display="+candidate.getDisplayId()+" cover="+secondaryPresentation.cover);dirty=true;
         }catch(WindowManager.InvalidDisplayException|WindowManager.BadTokenException|SecurityException e){secondaryPresentation=null;note("cover",e.toString());}
     }
@@ -361,5 +364,5 @@ public final class MainActivity extends Activity implements SensorEventListener,
     private void note(String kind,String value){String line=SystemClock.elapsedRealtime()+"\t"+kind+"\t"+value;records.add(line);while(records.size()>2400)records.removeFirst();if(!kind.equals("frame"))Log.i("FoldlightProbe",line);
         if(kind.equals("frame")&&!images.isShutdown()){String snapshot=report();images.execute(()->{try(FileOutputStream out=new FileOutputStream(new File(getFilesDir(),"diagnostic-latest.txt"))){out.write(snapshot.getBytes(java.nio.charset.StandardCharsets.UTF_8));}catch(IOException ignored){}});}
     }
-    private String report(){return "Foldlight "+BuildConfig.VERSION_NAME+"\n"+Build.MODEL+" Android "+Build.VERSION.RELEASE+" API "+Build.VERSION.SDK_INT+"\nmode="+mode+"\nsensor="+(hingeSensor==null?"none":hingeSensor.getName())+"\nlogBridge="+bridgeState+" active="+logActive+" delayMs="+logDelayMs+"\nvendor="+vendorState+" active="+vendorActive+"\n"+samples.description()+"\nraw="+raw+" distinct="+distinct.size()+" events="+sensorCount+"\ncallbacks="+frameCount+" over25ms="+slowFrames+" maxCallbackMs="+maxFrameMs+"\nGL="+renderer.error+"\n"+String.join("\n",records)+"\n";}
+    private String report(){return "Foldlight "+BuildConfig.VERSION_NAME+"\n"+Build.MODEL+" Android "+Build.VERSION.RELEASE+" API "+Build.VERSION.SDK_INT+"\nreferenceGlass="+referenceGlass+"\nmode="+mode+"\nsensor="+(hingeSensor==null?"none":hingeSensor.getName())+"\nlogBridge="+bridgeState+" active="+logActive+" delayMs="+logDelayMs+"\nvendor="+vendorState+" active="+vendorActive+"\n"+samples.description()+"\nraw="+raw+" distinct="+distinct.size()+" events="+sensorCount+"\ncallbacks="+frameCount+" over25ms="+slowFrames+" maxCallbackMs="+maxFrameMs+"\nGL="+renderer.error+"\n"+String.join("\n",records)+"\n";}
 }

@@ -217,5 +217,41 @@ public class ProjectedPanelsTest {
             assertTrue("feather extends beyond the former hard silhouette "+cover,halo);
         }
     }
+    @Test public void referenceGlassPreservesRightHalfAndReturnsToOriginalMode(){
+        renderer.referenceGlass=true;renderer.innerRevealEnabled=true;renderer.innerBrightness=1;
+        renderer.hinge=180;renderer.visualTilt=0;byte[] flat=draw();
+        for(float angle:new float[]{10,45,90,130,170}){
+            renderer.hinge=angle;renderer.visualTilt=FoldMath.panelTilt(angle,.9f);
+            renderer.innerBrightness=angle/180;renderer.blur=.6f;byte[] folded=draw();
+            for(int y=4;y<H-4;y++)for(int x=W/2+2;x<W-2;x++)for(int c=0;c<4;c++)
+                assertEquals("reference keeps the right pane unchanged",channel(flat,x,y,c),channel(folded,x,y,c));
+        }
+        renderer.referenceGlass=false;byte[] original=draw();renderer.referenceGlass=true;byte[] reference=draw();
+        for(int y=4;y<H-4;y++)for(int x=W/2+2;x<W-2;x++)for(int c=0;c<4;c++)
+            assertEquals("A/B preserves fixed-pane image detail",channel(original,x,y,c),channel(reference,x,y,c));
+        renderer.referenceGlass=false;assertArrayEquals("A/B does not mutate original renderer state",original,draw());
+    }
+    @Test public void referenceCoverRetainsColorBeyondNinetyAndDoesNotFlash(){
+        renderer.referenceGlass=true;renderer.coverMaxAngle=180;renderer.split=0;renderer.moveRight=true;
+        renderer.coverBrightness=0;renderer.blur=.2f;
+        int previous=-1;
+        for(float angle:new float[]{88,89,89.9f,90,90.1f,91,100,130,180}){
+            renderer.hinge=FoldMath.coverHinge(angle);renderer.visualTilt=angle;
+            byte[] pixels=draw();int value=channel(pixels,W/2,H/2,2);
+            assertTrue("glass retains image color rather than a black shutter",value>40);
+            if(previous>=0)assertTrue("no discontinuity at 90 degrees",Math.abs(value-previous)<15);
+            previous=value;assertArrayEquals("stable when paused",pixels,draw());
+        }
+    }
+    @Test public void referenceCoverFocusMovesFromFarEdgeTowardHinge(){
+        Bitmap stripes=Bitmap.createBitmap(W,H,Bitmap.Config.ARGB_8888);
+        for(int y=0;y<H;y++)for(int x=0;x<W;x++)stripes.setPixel(x,y,y/4%2==0?Color.WHITE:Color.BLACK);
+        renderer.setImage(stripes);renderer.referenceGlass=true;renderer.coverMaxAngle=100;
+        renderer.split=0;renderer.moveRight=true;renderer.visualTilt=0;renderer.coverBrightness=1;renderer.blur=.2f;
+        renderer.hinge=FoldMath.coverHinge(36);byte[] early=draw();
+        renderer.hinge=FoldMath.coverHinge(90);byte[] later=draw();
+        assertTrue("far edge loses detail first",detail(early,208,216)<detail(early,36,44)*.6);
+        assertTrue("focus boundary advances toward the hinge",detail(later,116,124)<detail(early,116,124)*.6);
+    }
     @After public void cleanup(){if(display!=null){EGL14.eglMakeCurrent(display,EGL14.EGL_NO_SURFACE,EGL14.EGL_NO_SURFACE,EGL14.EGL_NO_CONTEXT);if(surface!=null)EGL14.eglDestroySurface(display,surface);if(context!=null)EGL14.eglDestroyContext(display,context);EGL14.eglTerminate(display);}}
 }

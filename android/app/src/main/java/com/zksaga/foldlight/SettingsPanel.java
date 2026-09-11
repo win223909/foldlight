@@ -12,6 +12,7 @@ import java.util.Locale;
 /** Native, scrollable settings with correctly proportioned independent screen previews. */
 final class SettingsPanel extends ScrollView {
     interface Actions {
+        default boolean referenceGlassEnabled(){return false;} default void referenceGlass(boolean value){}
         void localInput();void photo(boolean cover);void fullscreen();void mode(String value);
         void manual(float value);void strength(float value);void coverMaxAngle(float value);void softness(float value);void blur(float value);
         default void profile(int index,MotionProfile value){} default void glass(boolean cover,float intensity,float gradient){}
@@ -44,6 +45,11 @@ final class SettingsPanel extends ScrollView {
         content.addView(button("启用免 USB 感应",false,actions::localInput),new LinearLayout.LayoutParams(-1,dp(48)));
         localStatus=label("Shizuku 授权后，无需连接电脑",12,MUTED);localStatus.setGravity(Gravity.CENTER);content.addView(localStatus);space(24);divider();space(24);
         heading("效果调节");space(13);
+        Switch reference=new Switch(context);reference.setText("参考玻璃 · 实验效果");reference.setTextSize(15);reference.setTextColor(INK);
+        reference.setChecked(actions.referenceGlassEnabled());reference.setContentDescription("参考玻璃实验效果");
+        reference.setOnCheckedChangeListener((button,checked)->actions.referenceGlass(checked));
+        content.addView(reference,new LinearLayout.LayoutParams(-1,dp(48)));
+        content.addView(label("开启：玻璃后方视差、移动磨砂、保留底色。\n关闭：原有翻折变形与渐黑。图片和参数共用。\n实验效果中的转角控制视差幅度，亮暗角度控制柔和衰减。",12,MUTED));space(16);
         LinearLayout segments=row();segments.setPadding(dp(4),dp(4),dp(4),dp(4));segments.setBackground(round(0xffe6e6eb,14));
         String[] names={"跟随开合","动画演示","手动"},values={"sensor","auto","manual"};
         for(int i=0;i<3;i++){final String mode=values[i];modes[i]=button(names[i],false,()->actions.mode(mode));segments.addView(modes[i],new LinearLayout.LayoutParams(0,dp(44),1));}content.addView(segments);space(12);
@@ -63,13 +69,13 @@ final class SettingsPanel extends ScrollView {
         control("外屏 · 展开开始变暗",40,179,Math.round(darkStart),v->v+"°",v->actions.darkStart(v));
         motionGroup("外屏 · 折叠",1,profiles);
         control("外屏 · 合拢开始变亮",41,180,Math.round(lightStart),v->v+"°",v->actions.lightStart(v));
-        content.addView(label("外屏 180° 全黑、40° 恢复全亮。黑色画面不代表息屏。",12,MUTED));space(16);glassControls(true,blur,coverGradient);space(24);divider();space(24);
+        content.addView(label("原效果：180° 全黑、40° 恢复全亮。\n参考玻璃：同样的亮暗阶段，最暗时仍保留底色。",12,MUTED));space(16);glassControls(true,blur,coverGradient);space(24);divider();space(24);
         TextView innerHeading=heading("内屏 · 左半边");space(8);
         content.addView(label("右半边保持清晰、静止。以下参数只影响左半边。",12,MUTED));space(16);
         control("内屏左侧基准幅度",25,250,Math.round(strength*100),v->String.format(Locale.US,"%.2g×",v/100f),v->actions.strength(v/100f));
         final float[] innerStarts={innerLightStart,innerDarkStart};
         TextView innerHint=label("",12,MUTED);
-        Runnable updateInnerHint=()->innerHint.setText("展开到 180° 完全清晰；合拢到 "+Math.round(InnerDimming.closingEnd(innerStarts[0],innerStarts[1]))+"° 完全变暗。");
+        Runnable updateInnerHint=()->innerHint.setText("展开到 180° 完全清晰；合拢到 "+Math.round(InnerDimming.closingEnd(innerStarts[0],innerStarts[1]))+"° 到达最暗状态。参考玻璃仍保留底色。");
         motionGroup("内屏左侧 · 展开",2,profiles);
         control("内屏左侧 · 展开开始变亮",0,179,Math.round(innerLightStart),v->v+"°",v->{innerStarts[0]=v;actions.innerLightStart(v);updateInnerHint.run();});
         motionGroup("内屏左侧 · 折叠",3,profiles);

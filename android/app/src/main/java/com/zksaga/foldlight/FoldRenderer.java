@@ -18,7 +18,7 @@ public final class FoldRenderer implements GLSurfaceView.Renderer {
     public volatile float coverMaxAngle=-1,coverBrightness=1;
     // Standalone previews keep the original angle mapping unless the controller supplies brightness.
     public volatile float innerBrightness=Float.NaN;
-    public volatile boolean innerRevealEnabled=false;
+    public volatile boolean innerRevealEnabled=false,referenceGlass=false;
     public volatile boolean horizontal=false, splitEnabled=true,moveRight=false;
     public volatile String error="";
     public volatile long draws=0, lastDrawNs=0;
@@ -74,6 +74,8 @@ public final class FoldRenderer implements GLSurfaceView.Renderer {
         GLES30.glUniform1f(uniform("frost"),FoldMath.clamp(blur,0,1));GLES30.glUniform1f(uniform("glassSigma"),glass.baseSigma);
         GLES30.glUniform1f(uniform("brightness"),FoldMath.clamp(coverBrightness,0,1));
         GLES30.glUniform1i(uniform("isCover"),coverMaxAngle>=0?1:0);
+        GLES30.glUniform1i(uniform("referenceGlass"),referenceGlass?1:0);
+        GLES30.glUniform1f(uniform("opening"),FoldMath.clamp((coverMaxAngle>=0?180-hinge:hinge)/180,0,1));
         GLES30.glUniform1i(uniform("innerReveal"),innerRevealEnabled?1:0);
         GLES30.glUniform1f(uniform("innerProgress"),FoldMath.clamp(Float.isNaN(innerBrightness)?(hinge-90)/90:innerBrightness,0,1));
         GLES30.glUniform1f(uniform("crease"),split);
@@ -98,10 +100,56 @@ public final class FoldRenderer implements GLSurfaceView.Renderer {
         uniform vec2 size,viewport,imageSize,uvScale;
         uniform int rotation;
         uniform float tilt,frost,frostGradient,crease,brightness,innerProgress,glassSigma;
-        uniform bool horizontal,moveRight,isCover,innerReveal;
+        uniform bool horizontal,moveRight,isCover,innerReveal,referenceGlass;
+        uniform float opening;
         out vec4 color;
         float glassFog(float progress,float gradient){
             return clamp((1.-progress)*(1.+.75*gradient*progress),0.,1.);
+        }
+        // The physical display is the moving glass. Project through it onto a separate
+        // content plane; do not rotate a second solid picture inside the folding device.
+        // Independently implemented study of the reference's depth/focus relationship.
+        void glassScene(vec2 p,float pivot,bool moving){
+            float axis=horizontal?p.y:p.x;
+            float extent=horizontal?size.y:size.x;
+            float crossExtent=horizontal?size.x:size.y;
+            float distance=abs(axis-pivot);
+            float length=max(1.,moveRight?extent-pivot:pivot);
+            float x=clamp(distance/length,0.,1.);
+            // A soft angular shoulder avoids reversing or disappearing beyond 90 degrees.
+            float angle=moving?atan(max(tilt,0.)*.75):0.;
+            float depth=distance*sin(angle),eye=max(size.x,size.y)*2.5;
+            vec2 glassPoint=p;
+            float projectedAxis=pivot+(axis<pivot?-1.:1.)*distance*cos(angle);
+            if(horizontal)glassPoint.y=projectedAxis;else glassPoint.x=projectedAxis;
+            vec2 hit=size*.5+(glassPoint-size*.5)*(eye/(eye-depth));
+            vec2 texUV=(hit/size-.5)*uvScale+.5;
+            float base=max(1.,max(imageSize.x*uvScale.x/size.x,imageSize.y*uvScale.y/size.y));
+            vec3 sharp=textureLod(photo,texUV,log2(base)).rgb;
+            // The fixed inner half bypasses focus, dimming and edge shading entirely.
+            if(!moving){color=vec4(sharp,1.);return;}
+            float front=1.18-1.3*smoothstep(0.,.6,opening);
+            float coverFocus=smoothstep(front-.18,front+.18,x)*smoothstep(0.,.12,opening);
+            float innerFocus=pow(1.-opening,.8)*smoothstep(0.,.65,x);
+            float amount=isCover?coverFocus:innerFocus;
+            float uniformFocus=isCover?smoothstep(0.,.6,opening):pow(1.-opening,.8);
+            amount=mix(uniformFocus,amount,frostGradient);
+            float radius=frost*length*.22*amount;
+            float texelRadius=radius*base;
+            vec3 soft=textureLod(glassPhoto,texUV,log2(max(max(base,texelRadius)/glassSigma,1.))).rgb;
+            vec3 pixel=mix(sharp,soft,clamp(texelRadius*texelRadius/(glassSigma*glassSigma),0.,1.));
+            // Shade only where projection leaves the content, with a soft optical edge.
+            float cross=horizontal?hit.x:hit.y;
+            float hitAxis=horizontal?hit.y:hit.x;
+            float boundary=min(min(cross,crossExtent-cross),min(hitAxis,extent-hitAxis));
+            float feather=max(.75,radius*.65);
+            float coverage=smoothstep(-feather,feather,boundary);
+            float level=isCover?brightness:(innerReveal?innerProgress:1.);
+            // Keep the requested direction-specific envelopes, but retain the image's
+            // colors through defocus instead of multiplying the whole pane to black.
+            float transmission=mix(.45,1.,smoothstep(0.,1.,level));
+            float shade=1.-.12*sin(angle)*x;
+            color=vec4(pixel*coverage*transmission*shade,1.);
         }
         void scene(){
             vec2 p=vec2(gl_FragCoord.x,viewport.y-gl_FragCoord.y);
@@ -113,6 +161,7 @@ public final class FoldRenderer implements GLSurfaceView.Renderer {
             float extent=horizontal?size.y:size.x;
             float pivot=extent*crease;
             bool moving=moveRight?axis>=pivot:axis<pivot;
+            if(referenceGlass){glassScene(p,pivot,moving);return;}
             float panelAngle=moving?tilt:0.;
             vec3 backdrop=(isCover||innerReveal)?vec3(0.):vec3(.018,.022,.029);
             // With the cover pivot at its left edge, the entire plane lies outside the

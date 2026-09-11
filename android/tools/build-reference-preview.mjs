@@ -1,0 +1,12 @@
+import {readFile,writeFile,mkdir,copyFile} from 'node:fs/promises';
+import {fileURLToPath} from 'node:url';
+const root=new URL('../../',import.meta.url),out=new URL('build/reference-preview/',root);
+await mkdir(out,{recursive:true});
+const java=await readFile(new URL('android/app/src/main/java/com/zksaga/foldlight/FoldRenderer.java',root),'utf8');
+const fragment=java.match(/private static final String FRAGMENT="""\n([\s\S]*?)\n        """;/)?.[1].replace(/^        /gm,'');
+if(!fragment)throw Error('Android shader not found');
+await writeFile(new URL('fragment.glsl',out),fragment);
+await copyFile(new URL('web/glass-blur.js',root),new URL('glass-blur.js',out));
+await copyFile(new URL('web/assets/demo-screen.svg',root),new URL('demo-screen.svg',out));
+await copyFile(new URL('android/tools/reference-preview.html',root),new URL('index.html',out));
+console.log(`Preview built: ${fileURLToPath(out)}\nServe with python3 -m http.server 4198 --bind 127.0.0.1 --directory build/reference-preview`);
