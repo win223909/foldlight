@@ -11,7 +11,7 @@ const hash=data=>createHash('sha256').update(data).digest('hex');
 const versioned=name=>`./${name}?v=${hash(files.get(name)).slice(0,12)}`;
 // Hash dependencies first; then hash the rewritten entry module for the HTML.
 let app=files.get('app.js').toString();
-for(const name of ['angles.js','animation.js','glass-blur.js','capabilities.js','screen-layout.js','assets/demo-screen.svg'])app=app.replaceAll(`./${name}`,versioned(name));
+for(const name of ['angles.js','animation.js','glass-blur.js','reference-glass.js','effect-settings.js','capabilities.js','screen-layout.js','assets/demo-screen.svg'])app=app.replaceAll(`./${name}`,versioned(name));
 files.set('app.js',Buffer.from(app));
 let html=files.get('index.html').toString();
 for(const name of ['app.js','style.css','icon.svg','assets/demo-screen.svg'])html=html.replaceAll(`./${name}`,versioned(name));

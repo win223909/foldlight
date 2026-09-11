@@ -6,6 +6,8 @@ export const publicFiles = [
   "angles.js",
   "animation.js",
   "glass-blur.js",
+  "reference-glass.js",
+  "effect-settings.js",
   "capabilities.js",
   "screen-layout.js",
   "assets/demo-screen.svg"

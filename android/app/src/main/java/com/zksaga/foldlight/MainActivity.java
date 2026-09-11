@@ -112,8 +112,8 @@ public final class MainActivity extends Activity implements SensorEventListener,
         // Six-control UI: hidden legacy speed/amplitude profiles must not keep
         // affecting the simplified experience. Retain the user's four angle choices.
         innerStrength=EffectDefaults.INNER;coverMaxAngle=EffectDefaults.COVER;softness=EffectDefaults.SOFTNESS;
-        frost=FoldMath.clamp(settings.getFloat("simpleBlur",settings.getFloat("coverFrost",settings.getFloat("frost",EffectDefaults.FROST))),0,1);
-        edgeDeformation=FoldMath.clamp(settings.getFloat("edgeDeformation",1),0,1);
+        frost=FoldMath.clamp(settings.getFloat("simpleBlur",settings.getFloat("coverFrost",settings.getFloat("frost",EffectDefaults.SIMPLE_BLUR))),0,1);
+        edgeDeformation=FoldMath.clamp(settings.getFloat("edgeDeformation",EffectDefaults.EDGE),0,1);
         referenceGlass=true;coverDimmingEnabled=true;motionProfiles=MotionProfile.defaults();
         coverFrost=frost;innerFrost=frost;coverGradient=1;innerGradient=1;
         if(saved!=null&&settings.getInt("uiRevision",0)>=3){coverDeformation.restore(saved.getFloatArray("coverDeformation"));innerDeformation.restore(saved.getFloatArray("innerDeformation"));}
@@ -203,6 +203,12 @@ public final class MainActivity extends Activity implements SensorEventListener,
             public void innerDarkStart(float value){innerDarkStart=value;saveMotionSettings();dirty=true;}
             public void edge(float value){edgeDeformation=value;saveMotionSettings();dirty=true;}
             public void blur(float value){frost=value;coverFrost=value;innerFrost=value;saveMotionSettings();dirty=true;}
+            public void defaults(){
+                darkStart=EffectDefaults.DARK_START;lightStart=EffectDefaults.LIGHT_START;innerLightStart=EffectDefaults.INNER_LIGHT_START;innerDarkStart=EffectDefaults.INNER_DARK_START;
+                edgeDeformation=EffectDefaults.EDGE;frost=EffectDefaults.SIMPLE_BLUR;coverFrost=frost;innerFrost=frost;
+                EffectDefaults.restore(getPreferences(MODE_PRIVATE));dirty=true;
+                Toast.makeText(MainActivity.this,"已恢复默认推荐参数",Toast.LENGTH_SHORT).show();
+            }
             public void diagnostics(){showDiagnostics();}
             public void reset(){new AlertDialog.Builder(MainActivity.this).setTitle("恢复哪一张图片？").setItems(new String[]{"外屏图片","内屏图片"},(d,which)->resetPicture(which==0)).setNegativeButton("取消",null).show();}
         });

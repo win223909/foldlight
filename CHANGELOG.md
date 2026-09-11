@@ -2,7 +2,11 @@
 
 Platform versions are independent. Web changes follow source revisions.
 
-## Fold8 0.3.7-preview.4 — unreleased experiment
+## Fold8 0.3.7 / Web — 2026-09-12
+
+- Recommend the measured 80° / 90° / 55° / 70° brightness starts, 60% cover compression and 100% blur.
+- Restore only the six effect settings with one button, preserving images.
+- Share the reference-glass shader with the web demo; add web compression and restore controls.
 
 - Use a continuous depth-based focus gradient, with a smooth fine-detail/Gaussian blend.
 - Fix ineffective dimming by removing the reference renderer's 45% brightness floor and duplicate easing; initialize cover brightness before its first frame.

@@ -16,7 +16,7 @@ Foldlight is a collection of native and web experiments inspired by [DuoLikeAnim
 | Web | Drag or tilt an image, upload your own, switch Chinese/English, enter immersive view | Modern WebGL 2 browser; HTTPS for phone motion |
 | iPhone | Native photo demo driven by device orientation | iOS 26.5+; 1.0.3 |
 | macOS | Menu bar app rendering a live desktop effect as the lid moves | macOS 13+; Apple Silicon / Intel; 0.2.4 |
-| Fold8 | Independent cover and inner images, continuous hinge tracking, per-direction controls | Android 11+ build minimum; tested on SM-F9710 / Android 17 / One UI 9; 0.3.6 |
+| Fold8 | Independent cover and inner images, continuous hinge tracking, per-direction controls | Android 11+ build minimum; tested on SM-F9710 / Android 17 / One UI 9; 0.3.7 |
 
 The web, iPhone and Android apps render their own images. They do **not** replace system-wide home-screen or app transitions. The Mac app needs Screen Recording permission for live desktop rendering. Fold8 continuous angle access and concurrent displays require user-authorized Shizuku and compatible Samsung firmware; support is not universal.
 

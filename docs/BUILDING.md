@@ -78,3 +78,7 @@ npm run check:public
 ```
 
 Review staged changes as well as automated scan output. CI does not deploy or read production credentials.
+
+### Shared reference glass shader
+
+After changing the Android fragment shader, run `node scripts/sync-glass-shader.mjs` to update `web/reference-glass.js`, then rebuild and verify both renderers.

@@ -13,13 +13,16 @@ final class SettingsPanel extends ScrollView {
     interface Actions {
         void localInput();void photo(boolean cover);void fullscreen();
         void darkStart(float value);void lightStart(float value);void innerLightStart(float value);void innerDarkStart(float value);
-        void edge(float value);void blur(float value);void diagnostics();void reset();
+        void edge(float value);void blur(float value);void diagnostics();void reset();void defaults();
     }
     private static final int INK=0xff1d1d1f,MUTED=0xff76767c,BLUE=0xff007aff;
     private final LinearLayout content;
     private final Actions actions;
     private final TextView connection,localStatus;
     private final ImageView coverImage,innerImage;
+    private final java.util.List<SeekBar> parameterSliders=new java.util.ArrayList<>();
+    private final java.util.List<TextView> parameterLabels=new java.util.ArrayList<>();
+    private final java.util.List<Integer> parameterMins=new java.util.ArrayList<>();
     private int safeTop,safeBottom;
     private boolean ready=true;
     void setReady(boolean value){ready=value;setImportantForAccessibility(value?IMPORTANT_FOR_ACCESSIBILITY_AUTO:IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);}
@@ -53,9 +56,15 @@ final class SettingsPanel extends ScrollView {
         control("外屏右侧压缩程度",0,100,Math.round(edge*100),v->v+"%",v->actions.edge(v/100f));
         control("模糊程度",0,100,Math.round(blur*100),v->v+"%",v->actions.blur(v/100f));
         space(16);divider();space(10);
+        content.addView(button("恢复默认参数",false,()->{actions.defaults();restoreDefaultControls();}),new LinearLayout.LayoutParams(-1,dp(48)));
+        content.addView(label("推荐：外屏 80° / 90°，内屏左侧 55° / 70°\n右侧压缩 60%，模糊 100%",12,MUTED));space(12);
         content.addView(button("恢复默认图片",false,actions::reset),new LinearLayout.LayoutParams(-1,dp(48)));
         content.addView(button("连接与诊断",false,actions::diagnostics),new LinearLayout.LayoutParams(-1,dp(48)));space(16);
         TextView credit=label("Made by ZK",13,MUTED);credit.setGravity(Gravity.CENTER);credit.setLetterSpacing(.025f);content.addView(credit);space(12);
+    }
+    private void restoreDefaultControls(){
+        int[] values={Math.round(EffectDefaults.DARK_START),Math.round(EffectDefaults.LIGHT_START),Math.round(EffectDefaults.INNER_LIGHT_START),Math.round(EffectDefaults.INNER_DARK_START),Math.round(EffectDefaults.EDGE*100),Math.round(EffectDefaults.SIMPLE_BLUR*100)};
+        for(int i=0;i<values.length;i++){parameterSliders.get(i).setProgress(values[i]-parameterMins.get(i));parameterLabels.get(i).setText(values[i]+(i<4?"°":"%"));}
     }
     void localStatus(String message){localStatus.setText(message);}
     void safeInsets(int top,int bottom){if(safeTop!=top||safeBottom!=bottom){safeTop=top;safeBottom=bottom;requestLayout();}}
@@ -91,7 +100,7 @@ final class SettingsPanel extends ScrollView {
     private SeekBar slider(int max,int progress,String title,IntChange change){SeekBar s=new SeekBar(getContext());s.setMax(max);s.setProgress(progress);s.setProgressTintList(ColorStateList.valueOf(BLUE));s.setThumbTintList(ColorStateList.valueOf(BLUE));s.setContentDescription(title);s.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onStartTrackingTouch(SeekBar bar){}public void onStopTrackingTouch(SeekBar bar){}public void onProgressChanged(SeekBar bar,int value,boolean user){if(user)change.apply(value);}});return s;}
     private void control(String title,int min,int max,int initial,ValueLabel format,IntChange change){
         LinearLayout row=row();TextView name=label(title,14,INK),value=label(format.text(initial),14,MUTED);row.addView(name,new LinearLayout.LayoutParams(0,-2,1));row.addView(value);content.addView(row);
-        SeekBar s=slider(max-min,initial-min,title,p->{value.setText(format.text(p+min));change.apply(p+min);});content.addView(s,new LinearLayout.LayoutParams(-1,dp(48)));space(8);
+        SeekBar s=slider(max-min,initial-min,title,p->{value.setText(format.text(p+min));change.apply(p+min);});parameterSliders.add(s);parameterLabels.add(value);parameterMins.add(min);content.addView(s,new LinearLayout.LayoutParams(-1,dp(48)));space(8);
     }
     private Button button(String title,boolean primary,Runnable action){Button b=new Button(getContext());b.setText(title);b.setTextSize(14);b.setAllCaps(false);b.setMinWidth(0);b.setMinimumWidth(0);b.setMinHeight(0);b.setMinimumHeight(0);b.setPadding(dp(8),0,dp(8),0);b.setTextColor(primary?Color.WHITE:BLUE);b.setTypeface(null,primary?Typeface.BOLD:Typeface.NORMAL);b.setBackground(new RippleDrawable(ColorStateList.valueOf(0x18007aff),round(primary?BLUE:Color.TRANSPARENT,15),round(Color.WHITE,15)));b.setOnClickListener(v->action.run());return b;}
     private GradientDrawable round(int color,int radius){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(dp(radius));return d;}
