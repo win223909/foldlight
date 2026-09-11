@@ -10,7 +10,7 @@ Platform versions are independent. Web changes follow source revisions.
 - Broaden the focus transition and blend fine detail continuously into Gaussian blur, removing the abrupt one-sigma cutoff.
 - Preserve image colors through dimming, stationary inner-right pixels, user images and settings.
 - Add a local four-pane shader comparison and three device GPU regression checks.
-- Device installation and physical hinge validation remain pending.
+- Installed preview.2 (code 30) on the test Fold8; three reference-glass GPU checks pass. Perceptual hinge validation remains pending.
 
 ## Fold8 0.3.6 — 2026-09-11
 
