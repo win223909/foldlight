@@ -2,9 +2,10 @@
 
 Platform versions are independent. Web changes follow source revisions.
 
-## Fold8 0.3.7-preview.3 — unreleased experiment
+## Fold8 0.3.7-preview.4 — unreleased experiment
 
 - Use a continuous depth-based focus gradient, with a smooth fine-detail/Gaussian blend.
+- Fix ineffective dimming by removing the reference renderer's 45% brightness floor and duplicate easing; initialize cover brightness before its first frame.
 - Reduce effect settings to four brightness angles, cover right-edge compression and shared blur.
 - Keep the cover left edge anchored during compression; preserve both inner halves from this adjustment.
 - Preserve user images and brightness angles; migrate cover blur to shared blur and retire hidden advanced overrides.

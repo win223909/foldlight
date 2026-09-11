@@ -128,10 +128,11 @@ public final class MainActivity extends Activity implements SensorEventListener,
         Display initialDisplay=getDisplay();mainCover=initialDisplay!=null&&FoldMath.isCoverSurface(initialDisplay.getMode().getPhysicalWidth(),initialDisplay.getMode().getPhysicalHeight());
         if(saved==null)displayed=mainCover?0:180;renderer=new FoldRenderer(mainCover?coverImage:innerImage);renderer.split=mainCover?0:.5f;renderer.moveRight=mainCover;renderer.displayRotation=initialDisplay==null?0:initialDisplay.getRotation();
         innerLight=innerDimming.step(displayed,innerLightStart,innerDarkStart);
+        coverLight=coverDimming.step(displayed,darkStart,lightStart);
         coverTilt=coverDeformation.step(displayed,0,coverMaxAngle,innerStrength,motionProfiles[0],motionProfiles[1]);
         innerTilt=innerDeformation.step(displayed,0,coverMaxAngle,innerStrength,motionProfiles[2],motionProfiles[3]);
         renderer.referenceGlass=referenceGlass;renderer.edgeDeformation=edgeDeformation;renderer.visualTilt=mainCover?coverTilt:innerTilt;renderer.frostGradient=mainCover?coverGradient:innerGradient;
-        renderer.innerBrightness=innerLight;renderer.innerRevealEnabled=true;renderer.coverMaxAngle=mainCover?coverMaxAngle:-1;renderer.strength=innerStrength;renderer.blur=mainCover?coverFrost:innerFrost;
+        renderer.innerBrightness=innerLight;renderer.coverBrightness=coverLight;renderer.innerRevealEnabled=true;renderer.coverMaxAngle=mainCover?coverMaxAngle:-1;renderer.strength=innerStrength;renderer.blur=mainCover?coverFrost:innerFrost;
         surface.setRenderer(renderer);surface.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
         ((FoldSurface)surface).setSettingsAction(()->{if(hidden)setHidden(false);});
         surface.getHolder().addCallback(new SurfaceHolder.Callback(){

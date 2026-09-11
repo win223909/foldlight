@@ -231,9 +231,10 @@ public class ProjectedPanelsTest {
             assertEquals("A/B preserves fixed-pane image detail",channel(original,x,y,c),channel(reference,x,y,c));
         renderer.referenceGlass=false;assertArrayEquals("A/B does not mutate original renderer state",original,draw());
     }
-    @Test public void referenceCoverRetainsColorBeyondNinetyAndDoesNotFlash(){
+    @Test public void referenceProjectionDoesNotFlashAtNinetyWhenLit(){
         renderer.referenceGlass=true;renderer.coverMaxAngle=180;renderer.split=0;renderer.moveRight=true;
-        renderer.coverBrightness=0;renderer.blur=.2f;
+        // Isolate geometric continuity; the independent fade is explicitly fully lit.
+        renderer.coverBrightness=1;renderer.blur=.2f;
         int previous=-1;
         for(float angle:new float[]{88,89,89.9f,90,90.1f,91,100,130,180}){
             renderer.hinge=FoldMath.coverHinge(angle);renderer.visualTilt=angle;
@@ -265,6 +266,28 @@ public class ProjectedPanelsTest {
         renderer.coverMaxAngle=-1;renderer.split=.5f;renderer.moveRight=false;renderer.hinge=110;
         renderer.edgeDeformation=0;byte[] inner=draw();renderer.edgeDeformation=1;
         assertArrayEquals("cover compression must not change either inner half",inner,draw());
+    }
+    @Test public void referenceBrightnessHonorsAllFourStartsAndReachesBlack(){
+        renderer.referenceGlass=true;renderer.visualTilt=0;renderer.blur=1;renderer.coverMaxAngle=100;
+        renderer.split=0;renderer.moveRight=true;renderer.coverBrightness=1;byte[] fullCover=draw();
+        CoverDimming cover=new CoverDimming();
+        for(float a:new float[]{0,89,134.5f,180,88,64,40}){
+            renderer.hinge=FoldMath.coverHinge(a);renderer.coverBrightness=cover.step(a,89,88);
+            byte[] pixels=draw();
+            assertEquals("cover GPU follows the configured opening/closing envelope",
+                channel(fullCover,W/2,H/2,2)*renderer.coverBrightness,channel(pixels,W/2,H/2,2),2);
+            if(a==180||a==88)assertEquals("no brightness floor",0,channel(pixels,W/2,H/2,2));
+        }
+        renderer.coverMaxAngle=-1;renderer.split=.5f;renderer.moveRight=false;renderer.innerRevealEnabled=true;
+        renderer.innerBrightness=1;byte[] fullInner=draw();InnerDimming inner=new InnerDimming();
+        for(float a:new float[]{0,61,120.5f,180,76,38,0}){
+            renderer.hinge=a;renderer.innerBrightness=inner.step(a,61,76);byte[] pixels=draw();
+            assertEquals("inner left GPU follows its independent opening/closing envelope",
+                channel(fullInner,W/4,H/2,2)*renderer.innerBrightness,channel(pixels,W/4,H/2,2),2);
+            if(a==0||a==61)assertEquals(0,channel(pixels,W/4,H/2,2));
+            for(int y=3;y<H-3;y++)for(int x=W/2+2;x<W-2;x++)for(int c=0;c<4;c++)
+                assertEquals("inner right never dims",channel(fullInner,x,y,c),channel(pixels,x,y,c));
+        }
     }
     @After public void cleanup(){if(display!=null){EGL14.eglMakeCurrent(display,EGL14.EGL_NO_SURFACE,EGL14.EGL_NO_SURFACE,EGL14.EGL_NO_CONTEXT);if(surface!=null)EGL14.eglDestroySurface(display,surface);if(context!=null)EGL14.eglDestroyContext(display,context);EGL14.eglTerminate(display);}}
 }

@@ -21,7 +21,7 @@ Instrumentation tests require an unlocked, compatible device and may temporarily
 
 `tools/hinge_usb_bridge.py` is a developer-only USB diagnostic fallback; the app normally uses its authorized on-device Shizuku service. Hardware behavior and frame smoothness require physical verification. See [BUILDING.md](../docs/BUILDING.md) and [COMPATIBILITY.md](../docs/COMPATIBILITY.md).
 
-## Reference glass experiment (0.3.7-preview.3)
+## Reference glass experiment (0.3.7-preview.4)
 
 The app now uses the reference-glass rendering with exactly six effect controls:
 
@@ -32,7 +32,7 @@ The app now uses the reference-glass rendering with exactly six effect controls:
 
 The four saved brightness angles and images are preserved. The former cover blur becomes the shared blur on first migration. Retired speed, acceleration, amplitude, gradient, rendering-mode and softness controls use built-in defaults instead of leaving hidden user overrides active. Motion follows the hinge automatically. Double-finger hold still opens settings; picture selection and local Shizuku setup remain available.
 
-A continuous depth field replaces the moving sharp/blur threshold. Brightness envelopes retain their timing and at least 45% color transmission; the inner right half bypasses all effect shading. This is an independently implemented visual study inspired by https://bonxn.github.io/dood-iphone-duo/; no model, imagery or video from that site is bundled.
+A continuous depth field replaces the moving sharp/blur threshold. Brightness envelopes control the full 0–100% image brightness range without an extra easing curve; either moving pane can reach black. The inner right half bypasses all effect shading. This is an independently implemented visual study inspired by https://bonxn.github.io/dood-iphone-duo/; no model, imagery or video from that site is bundled.
 
 To compare the actual Android fragment shader in a desktop browser:
 
@@ -43,4 +43,4 @@ python3 -m http.server 4198 --bind 127.0.0.1 --directory build/reference-preview
 
 Open http://127.0.0.1:4198 and drag the angle or play a cycle. Left: original renderer retained for development comparison. Right: current glass effect. The preview uses simplified opening curves and generated artwork; it does not simulate hinge sampling, direction-dependent brightness envelopes, Android display switching or physical GPU performance. It is not part of the public web build.
 
-Preview.3 validation: 38 JVM tests, lint and APK builds pass; all six selected GPU/settings instrumentation checks pass on SM-F9710. Installed in place as code 31. Perceived folding smoothness still requires user feedback.
+Preview.4 validation: 38 JVM tests, lint and APK builds pass; all seven selected GPU/settings instrumentation checks pass on SM-F9710, including configured brightness starts, full-black endpoints and stationary-right isolation. Installed in place as code 32. Perceived folding smoothness still requires user feedback.

@@ -162,9 +162,10 @@ public final class FoldRenderer implements GLSurfaceView.Renderer {
             float coverage=smoothstep(-feather,feather,boundary);
             if(isCover)coverage*=smoothstep(-feather,feather,silhouetteBoundary);
             float level=isCover?brightness:(innerReveal?innerProgress:1.);
-            // Keep the requested direction-specific envelopes, but retain the image's
-            // colors through defocus instead of multiplying the whole pane to black.
-            float transmission=mix(.45,1.,smoothstep(0.,1.,level));
+            // The direction-specific controller owns fade timing and easing. Respect
+            // its full 0..1 range: a second easing curve delayed the visible onset,
+            // and the former 45% floor prevented either panel from reaching black.
+            float transmission=level;
             float shade=1.-.12*sin(angle)*x;
             color=vec4(pixel*coverage*transmission*shade,1.);
         }
