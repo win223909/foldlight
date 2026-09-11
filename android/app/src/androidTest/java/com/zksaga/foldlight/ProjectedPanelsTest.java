@@ -253,5 +253,18 @@ public class ProjectedPanelsTest {
         assertTrue("far edge loses detail first",detail(early,208,216)<detail(early,36,44)*.6);
         assertTrue("focus boundary advances toward the hinge",detail(later,116,124)<detail(early,116,124)*.6);
     }
+    @Test public void compressionOnlyContractsCoverRightEdge(){
+        renderer.referenceGlass=true;renderer.coverMaxAngle=100;renderer.split=0;renderer.moveRight=true;
+        renderer.hinge=FoldMath.coverHinge(100);renderer.visualTilt=60;renderer.blur=0;renderer.coverBrightness=1;
+        renderer.edgeDeformation=0;byte[] wide=draw();renderer.edgeDeformation=1;byte[] narrow=draw();
+        int wideEdge=0,narrowEdge=0;for(int x=0;x<W;x++){
+            if(channel(wide,x,H/2,2)>30)wideEdge=x;if(channel(narrow,x,H/2,2)>30)narrowEdge=x;
+        }
+        assertTrue("right edge visibly contracts",narrowEdge<wideEdge-20);
+        assertEquals("left edge stays anchored",channel(wide,1,H/2,2),channel(narrow,1,H/2,2),1);
+        renderer.coverMaxAngle=-1;renderer.split=.5f;renderer.moveRight=false;renderer.hinge=110;
+        renderer.edgeDeformation=0;byte[] inner=draw();renderer.edgeDeformation=1;
+        assertArrayEquals("cover compression must not change either inner half",inner,draw());
+    }
     @After public void cleanup(){if(display!=null){EGL14.eglMakeCurrent(display,EGL14.EGL_NO_SURFACE,EGL14.EGL_NO_SURFACE,EGL14.EGL_NO_CONTEXT);if(surface!=null)EGL14.eglDestroySurface(display,surface);if(context!=null)EGL14.eglDestroyContext(display,context);EGL14.eglTerminate(display);}}
 }

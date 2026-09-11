@@ -12,7 +12,7 @@ import javax.microedition.khronos.opengles.GL10;
 
 /** One fullscreen GPU pass; Gaussian photo levels are cached only when the image changes. */
 public final class FoldRenderer implements GLSurfaceView.Renderer {
-    public volatile float visualTilt=Float.NaN,frostGradient=1;
+    public volatile float visualTilt=Float.NaN,frostGradient=1,edgeDeformation=1;
     public volatile float hinge=180, blur=.08f, split=.5f, strength=1.5f;
     // Negative means the inner panel; zero explicitly disables cover rotation.
     public volatile float coverMaxAngle=-1,coverBrightness=1;
@@ -75,6 +75,7 @@ public final class FoldRenderer implements GLSurfaceView.Renderer {
         GLES30.glUniform1f(uniform("brightness"),FoldMath.clamp(coverBrightness,0,1));
         GLES30.glUniform1i(uniform("isCover"),coverMaxAngle>=0?1:0);
         GLES30.glUniform1i(uniform("referenceGlass"),referenceGlass?1:0);
+        GLES30.glUniform1f(uniform("edgeDeformation"),FoldMath.clamp(edgeDeformation,0,1));
         GLES30.glUniform1f(uniform("opening"),FoldMath.clamp((coverMaxAngle>=0?180-hinge:hinge)/180,0,1));
         GLES30.glUniform1i(uniform("innerReveal"),innerRevealEnabled?1:0);
         GLES30.glUniform1f(uniform("innerProgress"),FoldMath.clamp(Float.isNaN(innerBrightness)?(hinge-90)/90:innerBrightness,0,1));
@@ -101,7 +102,7 @@ public final class FoldRenderer implements GLSurfaceView.Renderer {
         uniform int rotation;
         uniform float tilt,frost,frostGradient,crease,brightness,innerProgress,glassSigma;
         uniform bool horizontal,moveRight,isCover,innerReveal,referenceGlass;
-        uniform float opening;
+        uniform float opening,edgeDeformation;
         out vec4 color;
         float glassFog(float progress,float gradient){
             return clamp((1.-progress)*(1.+.75*gradient*progress),0.,1.);
@@ -113,11 +114,17 @@ public final class FoldRenderer implements GLSurfaceView.Renderer {
             float axis=horizontal?p.y:p.x;
             float extent=horizontal?size.y:size.x;
             float crossExtent=horizontal?size.x:size.y;
-            float distance=abs(axis-pivot);
             float length=max(1.,moveRight?extent-pivot:pivot);
-            float x=clamp(distance/length,0.,1.);
-            // A soft angular shoulder avoids reversing or disappearing beyond 90 degrees.
+            float naturalDistance=abs(axis-pivot);
             float angle=moving?atan(max(tilt,0.)*.75):0.;
+            // Only the cover's right edge contracts. The left edge and its local
+            // scale stay anchored: screenX = sourceX - compression * sourceX^2.
+            float compression=isCover?.4*edgeDeformation*sin(angle):0.;
+            float u=naturalDistance/length;
+            float sourceU=2.*u/(1.+sqrt(max(.001,1.-4.*compression*u)));
+            float distance=sourceU*length;
+            float x=clamp(sourceU,0.,1.);
+            float silhouetteBoundary=length*(1.-compression)-naturalDistance;
             float depth=distance*sin(angle),eye=max(size.x,size.y)*2.5;
             vec2 glassPoint=p;
             float projectedAxis=pivot+(axis<pivot?-1.:1.)*distance*cos(angle);
@@ -128,11 +135,13 @@ public final class FoldRenderer implements GLSurfaceView.Renderer {
             vec3 sharp=textureLod(photo,texUV,log2(base)).rgb;
             // The fixed inner half bypasses focus, dimming and edge shading entirely.
             if(!moving){color=vec4(sharp,1.);return;}
-            float front=1.18-1.3*smoothstep(0.,.6,opening);
-            float coverFocus=smoothstep(front-.42,front+.42,x)*smoothstep(0.,.12,opening);
-            float innerFocus=pow(1.-opening,.8)*smoothstep(0.,1.,x);
+            // A continuous depth field has no moving threshold or flat plateau.
+            // Every position loses detail progressively; focus isolines travel naturally.
+            float coverPhase=1.-(1.-opening)*(1.-opening);
+            float coverFocus=coverPhase*pow(x,mix(1.6,.85,coverPhase));
+            float innerFocus=pow(1.-opening,.8)*pow(x,1.35);
             float amount=isCover?coverFocus:innerFocus;
-            float uniformFocus=isCover?smoothstep(0.,.6,opening):pow(1.-opening,.8);
+            float uniformFocus=isCover?coverPhase:pow(1.-opening,.8);
             amount=mix(uniformFocus,amount,frostGradient);
             float radius=frost*length*.22*amount;
             float texelRadius=radius*base;
@@ -151,6 +160,7 @@ public final class FoldRenderer implements GLSurfaceView.Renderer {
             float boundary=min(min(cross,crossExtent-cross),min(hitAxis,extent-hitAxis));
             float feather=max(.75,radius*.65);
             float coverage=smoothstep(-feather,feather,boundary);
+            if(isCover)coverage*=smoothstep(-feather,feather,silhouetteBoundary);
             float level=isCover?brightness:(innerReveal?innerProgress:1.);
             // Keep the requested direction-specific envelopes, but retain the image's
             // colors through defocus instead of multiplying the whole pane to black.

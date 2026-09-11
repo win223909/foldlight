@@ -7,31 +7,25 @@ import android.graphics.*;
 import android.graphics.drawable.*;
 import android.view.*;
 import android.widget.*;
-import java.util.Locale;
 
 /** Native, scrollable settings with correctly proportioned independent screen previews. */
 final class SettingsPanel extends ScrollView {
     interface Actions {
-        default boolean referenceGlassEnabled(){return false;} default void referenceGlass(boolean value){}
-        void localInput();void photo(boolean cover);void fullscreen();void mode(String value);
-        void manual(float value);void strength(float value);void coverMaxAngle(float value);void softness(float value);void blur(float value);
-        default void profile(int index,MotionProfile value){} default void glass(boolean cover,float intensity,float gradient){}
-        void darkStart(float value);void lightStart(float value);void innerLightStart(float value);void innerDarkStart(float value);void coverDimming(boolean value);void diagnostics();void reset();
+        void localInput();void photo(boolean cover);void fullscreen();
+        void darkStart(float value);void lightStart(float value);void innerLightStart(float value);void innerDarkStart(float value);
+        void edge(float value);void blur(float value);void diagnostics();void reset();
     }
     private static final int INK=0xff1d1d1f,MUTED=0xff76767c,BLUE=0xff007aff;
     private final LinearLayout content;
     private final Actions actions;
-    private final TextView connection,angleText,localStatus;
+    private final TextView connection,localStatus;
     private final ImageView coverImage,innerImage;
-    private final Button[] modes=new Button[3];
-    private final LinearLayout manualRow;
     private int safeTop,safeBottom;
-    private String selected="";
     private boolean ready=true;
     void setReady(boolean value){ready=value;setImportantForAccessibility(value?IMPORTANT_FOR_ACCESSIBILITY_AUTO:IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);}
     @Override public boolean onInterceptTouchEvent(MotionEvent event){return !ready||super.onInterceptTouchEvent(event);}
     @Override public boolean onTouchEvent(MotionEvent event){return !ready||super.onTouchEvent(event);}
-    SettingsPanel(Context context,Bitmap cover,Bitmap inner,float manual,float strength,float coverMaxAngle,float softness,float blur,boolean coverDimming,float darkStart,float lightStart,float innerLightStart,float innerDarkStart,MotionProfile[] profiles,float innerFrost,float coverGradient,float innerGradient,Actions actions){
+    SettingsPanel(Context context,Bitmap cover,Bitmap inner,float darkStart,float lightStart,float innerLightStart,float innerDarkStart,float edge,float blur,Actions actions){
         super(context);this.actions=actions;setFillViewport(true);setClipToPadding(false);setVerticalScrollBarEnabled(false);setBackgroundColor(0xfff5f5f7);
         content=new LinearLayout(context);content.setOrientation(LinearLayout.VERTICAL);addView(content,new ScrollView.LayoutParams(-1,-2));
         LinearLayout mast=row();TextView wordmark=label("FOLDLIGHT",11,MUTED);wordmark.setLetterSpacing(.16f);mast.addView(wordmark,new LinearLayout.LayoutParams(0,-2,1));
@@ -44,67 +38,24 @@ final class SettingsPanel extends ScrollView {
         TextView hint=label("双指同时长按，打开设置",11,MUTED);hint.setGravity(Gravity.CENTER);content.addView(hint);space(14);
         content.addView(button("启用免 USB 感应",false,actions::localInput),new LinearLayout.LayoutParams(-1,dp(48)));
         localStatus=label("Shizuku 授权后，无需连接电脑",12,MUTED);localStatus.setGravity(Gravity.CENTER);content.addView(localStatus);space(24);divider();space(24);
-        heading("效果调节");space(13);
-        Switch reference=new Switch(context);reference.setText("参考玻璃 · 实验效果");reference.setTextSize(15);reference.setTextColor(INK);
-        reference.setChecked(actions.referenceGlassEnabled());reference.setContentDescription("参考玻璃实验效果");
-        reference.setOnCheckedChangeListener((button,checked)->actions.referenceGlass(checked));
-        content.addView(reference,new LinearLayout.LayoutParams(-1,dp(48)));
-        content.addView(label("开启：玻璃后方视差、移动磨砂、保留底色。\n关闭：原有翻折变形与渐黑。图片和参数共用。\n实验效果中的转角控制视差幅度，亮暗角度控制柔和衰减。",12,MUTED));space(16);
-        LinearLayout segments=row();segments.setPadding(dp(4),dp(4),dp(4),dp(4));segments.setBackground(round(0xffe6e6eb,14));
-        String[] names={"跟随开合","动画演示","手动"},values={"sensor","auto","manual"};
-        for(int i=0;i<3;i++){final String mode=values[i];modes[i]=button(names[i],false,()->actions.mode(mode));segments.addView(modes[i],new LinearLayout.LayoutParams(0,dp(44),1));}content.addView(segments);space(12);
-        manualRow=new LinearLayout(context);manualRow.setOrientation(LinearLayout.VERTICAL);
-        angleText=label("预览角度 · "+Math.round(manual)+"°",13,INK);manualRow.addView(angleText);
-        SeekBar angle=slider(180,(int)manual,"手动预览角度",v->{angleText.setText("预览角度 · "+v+"°");actions.manual(v);});manualRow.addView(angle,new LinearLayout.LayoutParams(-1,dp(44)));content.addView(manualRow);
-        LinearLayout jumps=row();
-        Button outerJump=button("外屏",false,()->{}),innerJump=button("内屏左半边",false,()->{}),sharedJump=button("共用",false,()->{});
-        for(Button b:new Button[]{outerJump,innerJump,sharedJump})jumps.addView(b,new LinearLayout.LayoutParams(0,dp(44),1));content.addView(jumps);
-        space(12);TextView outerHeading=heading("外屏");space(8);
-        content.addView(label("画面绕左侧边缘转动；以下参数仅影响外屏。",12,MUTED));space(16);
-        control("外屏基准转角",0,180,Math.round(coverMaxAngle),v->v+"°",v->actions.coverMaxAngle(v));
-        Switch dimming=new Switch(context);dimming.setText("外屏渐暗");dimming.setTextSize(14);dimming.setTextColor(INK);dimming.setChecked(coverDimming);
-        dimming.setThumbTintList(new ColorStateList(new int[][]{new int[]{android.R.attr.state_checked},new int[]{}},new int[]{BLUE,0xffb8b8be}));
-        dimming.setOnCheckedChangeListener((button,checked)->actions.coverDimming(checked));content.addView(dimming,new LinearLayout.LayoutParams(-1,dp(48)));space(12);
-        motionGroup("外屏 · 展开",0,profiles);
-        control("外屏 · 展开开始变暗",40,179,Math.round(darkStart),v->v+"°",v->actions.darkStart(v));
-        motionGroup("外屏 · 折叠",1,profiles);
-        control("外屏 · 合拢开始变亮",41,180,Math.round(lightStart),v->v+"°",v->actions.lightStart(v));
-        content.addView(label("原效果：180° 全黑、40° 恢复全亮。\n参考玻璃：同样的亮暗阶段，最暗时仍保留底色。",12,MUTED));space(16);glassControls(true,blur,coverGradient);space(24);divider();space(24);
-        TextView innerHeading=heading("内屏 · 左半边");space(8);
-        content.addView(label("右半边保持清晰、静止。以下参数只影响左半边。",12,MUTED));space(16);
-        control("内屏左侧基准幅度",25,250,Math.round(strength*100),v->String.format(Locale.US,"%.2g×",v/100f),v->actions.strength(v/100f));
-        final float[] innerStarts={innerLightStart,innerDarkStart};
-        TextView innerHint=label("",12,MUTED);
-        Runnable updateInnerHint=()->innerHint.setText("展开到 180° 完全清晰；合拢到 "+Math.round(InnerDimming.closingEnd(innerStarts[0],innerStarts[1]))+"° 到达最暗状态。参考玻璃仍保留底色。");
-        motionGroup("内屏左侧 · 展开",2,profiles);
-        control("内屏左侧 · 展开开始变亮",0,179,Math.round(innerLightStart),v->v+"°",v->{innerStarts[0]=v;actions.innerLightStart(v);updateInnerHint.run();});
-        motionGroup("内屏左侧 · 折叠",3,profiles);
-        control("内屏左侧 · 合拢开始变暗",1,180,Math.round(innerDarkStart),v->v+"°",v->{innerStarts[1]=v;actions.innerDarkStart(v);updateInnerHint.run();});
-        updateInnerHint.run();content.addView(innerHint);space(16);glassControls(false,innerFrost,innerGradient);space(24);divider();space(24);
-        TextView sharedHeading=heading("共用 · 跟随与调节说明");space(12);
-        outerJump.setOnClickListener(v->smoothScrollTo(0,outerHeading.getTop()));innerJump.setOnClickListener(v->smoothScrollTo(0,innerHeading.getTop()));sharedJump.setOnClickListener(v->smoothScrollTo(0,sharedHeading.getTop()));
-        content.addView(label("速度越高，跟随越快。加速度 1× 为原曲线，\n大于 1× 前慢后快，小于 1× 前快后慢。\n幅度以本屏基准为参考，1× 为原幅度，0× 保持该次动作起始形态。\n外屏最多转动 180°，内屏左侧最多 85°。\n调节变形参数后，从当前位置继续开合即可预览。",12,MUTED));space(16);
-        control("跟随柔和度",0,100,Math.round(softness*100),v->v+"%",v->actions.softness(v/100f));
-        TextView softnessHint=label("低：响应直接　高：过渡柔和、稍有延迟",12,MUTED);content.addView(softnessHint);space(16);
-        TextView motionHint=label("高斯玻璃模糊与柔边沿转轴向外渐强。\n内屏左侧按设定角度逐渐变亮或变暗，\n右侧始终保持清晰、静止。",12,MUTED);content.addView(motionHint);space(23);divider();space(10);
+        heading("外屏");space(8);
+        content.addView(label("打开时渐暗，折叠时渐亮。",12,MUTED));space(16);
+        control("打开开始变暗角度",40,179,Math.round(darkStart),v->v+"°",v->actions.darkStart(v));
+        control("折叠开始变亮角度",41,180,Math.round(lightStart),v->v+"°",v->actions.lightStart(v));
+        space(16);divider();space(24);
+        heading("内屏 · 左半边");space(8);
+        content.addView(label("打开时渐亮，折叠时渐暗。右半边保持清晰、静止。",12,MUTED));space(16);
+        control("打开开始变亮角度",0,179,Math.round(innerLightStart),v->v+"°",v->actions.innerLightStart(v));
+        control("折叠开始变暗角度",1,180,Math.round(innerDarkStart),v->v+"°",v->actions.innerDarkStart(v));
+        space(16);divider();space(24);
+        heading("画面质感");space(8);
+        content.addView(label("压缩仅影响外屏右侧，左侧固定。\n模糊同时影响外屏和内屏左半边。",12,MUTED));space(16);
+        control("外屏右侧压缩程度",0,100,Math.round(edge*100),v->v+"%",v->actions.edge(v/100f));
+        control("模糊程度",0,100,Math.round(blur*100),v->v+"%",v->actions.blur(v/100f));
+        space(16);divider();space(10);
         content.addView(button("恢复默认图片",false,actions::reset),new LinearLayout.LayoutParams(-1,dp(48)));
         content.addView(button("连接与诊断",false,actions::diagnostics),new LinearLayout.LayoutParams(-1,dp(48)));space(16);
         TextView credit=label("Made by ZK",13,MUTED);credit.setGravity(Gravity.CENTER);credit.setLetterSpacing(.025f);content.addView(credit);space(12);
-    }
-    private void glassControls(boolean cover,float intensity,float gradient){
-        String name=cover?"外屏":"内屏左侧";float[] values={intensity,gradient};
-        control(name+" · 磨砂强度",0,100,Math.round(intensity*100),v->v+"%",v->{values[0]=v/100f;actions.glass(cover,values[0],values[1]);});
-        control(name+" · 磨砂渐变强度",0,100,Math.round(gradient*100),v->v+"%",v->{values[1]=v/100f;actions.glass(cover,values[0],values[1]);});
-        content.addView(label("渐变 0%：均匀磨砂；100%：从转轴向外渐强。\n同时影响边缘柔化。",12,MUTED));
-    }
-    private void motionGroup(String title,int index,MotionProfile[] profiles){
-        space(12);TextView heading=label(title,16,INK);heading.setTypeface(null,Typeface.BOLD);content.addView(heading);space(12);
-        MotionProfile initial=profiles[index];final float[] values={initial.start,initial.speed,initial.amplitude,initial.acceleration};
-        Runnable changed=()->actions.profile(index,new MotionProfile(values[0],values[1],values[2],values[3]));
-        control(title+"开始变形",0,180,Math.round(values[0]),v->v+"°",v->{values[0]=v;changed.run();});
-        control(title+" · 速度",25,400,Math.round(values[1]*100),v->String.format(Locale.US,"%.2f×",v/100f),v->{values[1]=v/100f;changed.run();});
-        control(title+" · 幅度",0,200,Math.round(values[2]*100),v->String.format(Locale.US,"%.2f×",v/100f),v->{values[2]=v/100f;changed.run();});
-        control(title+" · 加速度",25,300,Math.round(values[3]*100),v->String.format(Locale.US,"%.2f×",v/100f),v->{values[3]=v/100f;changed.run();});
     }
     void localStatus(String message){localStatus.setText(message);}
     void safeInsets(int top,int bottom){if(safeTop!=top||safeBottom!=bottom){safeTop=top;safeBottom=bottom;requestLayout();}}
@@ -133,7 +84,7 @@ final class SettingsPanel extends ScrollView {
     void update(String mode,float raw,boolean bridge,boolean active,boolean busy){
         connection.setText(busy?"正在准备图片…":active?"● 感应已连接 · "+Math.round(raw)+"°":bridge?"● 感应已连接 · 等待开合":"实时感应未连接 · 请启用手机本地辅助");
         connection.setTextColor(bridge?0xff37754b:MUTED);
-        if(!selected.equals(mode)){selected=mode;String[] keys={"sensor","auto","manual"};for(int i=0;i<3;i++){boolean on=keys[i].equals(mode);modes[i].setBackground(round(on?0xffffffff:0x00000000,11));modes[i].setTextColor(on?INK:MUTED);modes[i].setTypeface(null,on?Typeface.BOLD:Typeface.NORMAL);}manualRow.setVisibility(mode.equals("manual")?VISIBLE:GONE);}
+
     }
     private interface IntChange{void apply(int value);}
     private interface ValueLabel{String text(int value);}

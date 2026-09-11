@@ -13,11 +13,22 @@ public class SettingsLayoutTest {
     private SettingsPanel panel(){
         android.content.Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();
         Bitmap image=Bitmap.createBitmap(4,4,Bitmap.Config.ARGB_8888);
-        return new SettingsPanel(context,image,image,120,1.5f,90,.7f,.08f,true,90,90,90,180,MotionProfile.defaults(),.08f,1,1,new SettingsPanel.Actions(){
-            public void innerLightStart(float value){} public void innerDarkStart(float value){} public void darkStart(float value){} public void lightStart(float value){} public void coverDimming(boolean value){} public void localInput(){} public void photo(boolean cover){} public void fullscreen(){} public void mode(String value){}
-            public void manual(float value){} public void strength(float value){} public void coverMaxAngle(float value){}
-            public void softness(float value){} public void blur(float value){} public void diagnostics(){} public void reset(){}
+        return new SettingsPanel(context,image,image,85,90,90,180,1,.2f,new SettingsPanel.Actions(){
+            public void innerLightStart(float value){} public void innerDarkStart(float value){} public void darkStart(float value){} public void lightStart(float value){}
+            public void localInput(){} public void photo(boolean cover){} public void fullscreen(){}
+            public void edge(float value){} public void blur(float value){} public void diagnostics(){} public void reset(){}
+
         });
+    }
+    @Test public void exposesOnlyTheSixRequestedControls(){
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(()->{
+            java.util.ArrayList<String> names=new java.util.ArrayList<>();collectSliders(panel(),names);
+            assertEquals(java.util.Arrays.asList("打开开始变暗角度","折叠开始变亮角度","打开开始变亮角度","折叠开始变暗角度","外屏右侧压缩程度","模糊程度"),names);
+        });
+    }
+    private void collectSliders(View view,java.util.List<String> result){
+        if(view instanceof android.widget.SeekBar)result.add(view.getContentDescription().toString());
+        if(view instanceof ViewGroup){ViewGroup group=(ViewGroup)view;for(int i=0;i<group.getChildCount();i++)collectSliders(group.getChildAt(i),result);}
     }
     @Test public void firstVisibleLayoutFitsAfterEveryPanelSwitch(){
         InstrumentationRegistry.getInstrumentation().runOnMainSync(()->{

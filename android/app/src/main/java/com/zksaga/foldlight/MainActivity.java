@@ -64,6 +64,7 @@ public final class MainActivity extends Activity implements SensorEventListener,
     private ScreenPictures pictures;
     private Boolean mainCover;
     private boolean coverDimmingEnabled=true,referenceGlass=true;
+    private float edgeDeformation=1;
     private final CoverDimming coverDimming=new CoverDimming();
     private final InnerDimming innerDimming=new InnerDimming();
     private float innerLight=1,innerLightStart=EffectDefaults.INNER_LIGHT_START,innerDarkStart=EffectDefaults.INNER_DARK_START;
@@ -108,13 +109,18 @@ public final class MainActivity extends Activity implements SensorEventListener,
         if(saved!=null)displayed=FoldMath.clamp(saved.getFloat("displayedAngle",180),0,180);
         if(saved!=null)innerDimming.restore(saved.getFloat("innerLightState",Float.NaN));
         if(saved!=null)coverDimming.restore(saved.getFloat("coverLightState",Float.NaN));
-        innerStrength=settings.getFloat("innerStrength",EffectDefaults.INNER);coverMaxAngle=FoldMath.clamp(settings.getFloat("coverMaxAngle",EffectDefaults.COVER),0,180);softness=settings.getFloat("softness",EffectDefaults.SOFTNESS);frost=settings.getFloat("frost",EffectDefaults.FROST);
-        referenceGlass=settings.getBoolean("referenceGlass",true);
-        motionProfiles=MotionSettings.load(settings);coverFrost=FoldMath.clamp(settings.getFloat("coverFrost",frost),0,1);innerFrost=FoldMath.clamp(settings.getFloat("innerFrost",frost),0,1);coverGradient=FoldMath.clamp(settings.getFloat("coverGradient",1),0,1);innerGradient=FoldMath.clamp(settings.getFloat("innerGradient",1),0,1);
-        if(saved!=null){coverDeformation.restore(saved.getFloatArray("coverDeformation"));innerDeformation.restore(saved.getFloatArray("innerDeformation"));}
+        // Six-control UI: hidden legacy speed/amplitude profiles must not keep
+        // affecting the simplified experience. Retain the user's four angle choices.
+        innerStrength=EffectDefaults.INNER;coverMaxAngle=EffectDefaults.COVER;softness=EffectDefaults.SOFTNESS;
+        frost=FoldMath.clamp(settings.getFloat("simpleBlur",settings.getFloat("coverFrost",settings.getFloat("frost",EffectDefaults.FROST))),0,1);
+        edgeDeformation=FoldMath.clamp(settings.getFloat("edgeDeformation",1),0,1);
+        referenceGlass=true;coverDimmingEnabled=true;motionProfiles=MotionProfile.defaults();
+        coverFrost=frost;innerFrost=frost;coverGradient=1;innerGradient=1;
+        if(saved!=null&&settings.getInt("uiRevision",0)>=3){coverDeformation.restore(saved.getFloatArray("coverDeformation"));innerDeformation.restore(saved.getFloatArray("innerDeformation"));}
         manual=settings.getFloat("manual",120);mode=settings.getString("mode","sensor");hidden=settings.getBoolean("hidden",false);
-        if(settings.getInt("uiRevision",0)<2){hidden=false;settings.edit().putInt("uiRevision",2).putBoolean("hidden",false).apply();}
+        if(settings.getInt("uiRevision",0)<3){hidden=false;settings.edit().putInt("uiRevision",3).putBoolean("hidden",false).apply();}
         if(saved!=null){manual=saved.getFloat("manual",manual);mode=saved.getString("mode",mode);hidden=saved.getBoolean("hidden",hidden);}
+        mode="sensor";
         sensors=(SensorManager)getSystemService(SENSOR_SERVICE);hingeSensor=sensors.getDefaultSensor(Sensor.TYPE_HINGE_ANGLE);
         sensorState=hingeSensor==null?"未提供标准铰链角度":"标准铰链传感器 · 等待回调";
         root=new FrameLayout(this);root.setBackgroundColor(Color.rgb(16,27,43));
@@ -124,7 +130,7 @@ public final class MainActivity extends Activity implements SensorEventListener,
         innerLight=innerDimming.step(displayed,innerLightStart,innerDarkStart);
         coverTilt=coverDeformation.step(displayed,0,coverMaxAngle,innerStrength,motionProfiles[0],motionProfiles[1]);
         innerTilt=innerDeformation.step(displayed,0,coverMaxAngle,innerStrength,motionProfiles[2],motionProfiles[3]);
-        renderer.referenceGlass=referenceGlass;renderer.visualTilt=mainCover?coverTilt:innerTilt;renderer.frostGradient=mainCover?coverGradient:innerGradient;
+        renderer.referenceGlass=referenceGlass;renderer.edgeDeformation=edgeDeformation;renderer.visualTilt=mainCover?coverTilt:innerTilt;renderer.frostGradient=mainCover?coverGradient:innerGradient;
         renderer.innerBrightness=innerLight;renderer.innerRevealEnabled=true;renderer.coverMaxAngle=mainCover?coverMaxAngle:-1;renderer.strength=innerStrength;renderer.blur=mainCover?coverFrost:innerFrost;
         surface.setRenderer(renderer);surface.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
         ((FoldSurface)surface).setSettingsAction(()->{if(hidden)setHidden(false);});
@@ -186,25 +192,16 @@ public final class MainActivity extends Activity implements SensorEventListener,
             }).setNegativeButton("稍后",null).show();
     }
     private void buildPanel(){
-        panel=new SettingsPanel(this,coverImage,innerImage,manual,innerStrength,coverMaxAngle,softness,coverFrost,coverDimmingEnabled,darkStart,lightStart,innerLightStart,innerDarkStart,motionProfiles,innerFrost,coverGradient,innerGradient,new SettingsPanel.Actions(){
-            public boolean referenceGlassEnabled(){return referenceGlass;}
-            public void referenceGlass(boolean value){referenceGlass=value;saveMotionSettings();dirty=true;}
+        panel=new SettingsPanel(this,coverImage,innerImage,darkStart,lightStart,innerLightStart,innerDarkStart,edgeDeformation,frost,new SettingsPanel.Actions(){
             public void localInput(){enableLocalInput();}
             public void photo(boolean cover){chooseImage(cover);}
             public void fullscreen(){setHidden(true);}
-            public void mode(String value){selectMode(value);}
-            public void manual(float value){manual=value;if(!mode.equals("manual"))selectMode("manual");dirty=true;}
-            public void strength(float value){innerStrength=value;saveMotionSettings();dirty=true;}
             public void darkStart(float value){darkStart=value;saveMotionSettings();dirty=true;}
             public void lightStart(float value){lightStart=value;saveMotionSettings();dirty=true;}
             public void innerLightStart(float value){innerLightStart=value;saveMotionSettings();dirty=true;}
             public void innerDarkStart(float value){innerDarkStart=value;saveMotionSettings();dirty=true;}
-            public void coverDimming(boolean value){coverDimmingEnabled=value;saveMotionSettings();dirty=true;}
-            public void coverMaxAngle(float value){coverMaxAngle=value;saveMotionSettings();dirty=true;}
-            public void softness(float value){softness=value;saveMotionSettings();dirty=true;}
-            public void blur(float value){frost=value;saveMotionSettings();dirty=true;}
-            public void glass(boolean cover,float intensity,float gradient){if(cover){coverFrost=intensity;coverGradient=gradient;}else{innerFrost=intensity;innerGradient=gradient;}saveMotionSettings();dirty=true;}
-            public void profile(int index,MotionProfile value){motionProfiles[index]=value;if(index<2)coverDeformation.reanchor(motionProfiles[0],motionProfiles[1]);else innerDeformation.reanchor(motionProfiles[2],motionProfiles[3]);saveMotionSettings();dirty=true;}
+            public void edge(float value){edgeDeformation=value;saveMotionSettings();dirty=true;}
+            public void blur(float value){frost=value;coverFrost=value;innerFrost=value;saveMotionSettings();dirty=true;}
             public void diagnostics(){showDiagnostics();}
             public void reset(){new AlertDialog.Builder(MainActivity.this).setTitle("恢复哪一张图片？").setItems(new String[]{"外屏图片","内屏图片"},(d,which)->resetPicture(which==0)).setNegativeButton("取消",null).show();}
         });
@@ -218,7 +215,7 @@ public final class MainActivity extends Activity implements SensorEventListener,
         GradientDrawable noticeBackground=new GradientDrawable();noticeBackground.setColor(0xee24242a);noticeBackground.setCornerRadius(dp(14));inputNotice.setBackground(noticeBackground);
         root.addView(inputNotice,new FrameLayout.LayoutParams(-2,-2,Gravity.TOP|Gravity.CENTER_HORIZONTAL));
     }
-    private void saveMotionSettings(){SharedPreferences.Editor edit=getPreferences(MODE_PRIVATE).edit();MotionSettings.save(edit,motionProfiles);edit.putBoolean("referenceGlass",referenceGlass).putFloat("coverFrost",coverFrost).putFloat("innerFrost",innerFrost).putFloat("coverGradient",coverGradient).putFloat("innerGradient",innerGradient).putBoolean("coverDimming",coverDimmingEnabled).putFloat("darkStart",darkStart).putFloat("lightStart",lightStart).putFloat("innerLightStart",innerLightStart).putFloat("innerDarkStart",innerDarkStart).putFloat("innerStrength",innerStrength).putFloat("coverMaxAngle",coverMaxAngle).putFloat("softness",softness).putFloat("frost",frost).apply();}
+    private void saveMotionSettings(){getPreferences(MODE_PRIVATE).edit().putFloat("edgeDeformation",edgeDeformation).putFloat("simpleBlur",frost).putFloat("darkStart",darkStart).putFloat("lightStart",lightStart).putFloat("innerLightStart",innerLightStart).putFloat("innerDarkStart",innerDarkStart).apply();}
     private int dp(float x){return Math.round(x*getResources().getDisplayMetrics().density);}
     private void selectMode(String value){mode=value;dualAllowed=resumed&&hidden&&mode.equals("sensor");animating=false;pendingAuto=false;dirty=true;note("mode",mode);if(mode.equals("auto"))play();updateStatus();updateInputNotice();}
     private void updateInputNotice(){
@@ -310,8 +307,8 @@ public final class MainActivity extends Activity implements SensorEventListener,
         boolean needsDraw=dirty||animating||Math.abs(renderer.hinge-renderAngle)>.005f;
         renderer.hinge=renderAngle;renderer.splitEnabled=true;
         if(mainCover==null||mainCover!=cover){mainCover=cover;renderer.setImage(cover?coverImage:innerImage);dirty=true;needsDraw=true;}
-        renderer.referenceGlass=referenceGlass;renderer.visualTilt=cover?coverTilt:innerTilt;renderer.frostGradient=cover?coverGradient:innerGradient;renderer.innerRevealEnabled=true;renderer.innerBrightness=innerLight;renderer.coverBrightness=coverLight;renderer.split=cover?0:.5f;renderer.horizontal=false;renderer.moveRight=cover;renderer.strength=innerStrength;renderer.coverMaxAngle=cover?coverMaxAngle:-1;renderer.blur=cover?coverFrost:innerFrost;
-        if(secondaryPresentation!=null){secondaryPresentation.renderer.referenceGlass=referenceGlass;secondaryPresentation.renderer.visualTilt=secondaryPresentation.cover?coverTilt:innerTilt;secondaryPresentation.renderer.frostGradient=secondaryPresentation.cover?coverGradient:innerGradient;secondaryPresentation.renderer.coverBrightness=coverLight;secondaryPresentation.renderer.innerBrightness=innerLight;secondaryPresentation.renderer.strength=innerStrength;secondaryPresentation.renderer.coverMaxAngle=secondaryPresentation.cover?coverMaxAngle:-1;secondaryPresentation.renderer.blur=secondaryPresentation.cover?coverFrost:innerFrost;secondaryPresentation.render(displayed,dirty);}
+        renderer.referenceGlass=referenceGlass;renderer.edgeDeformation=edgeDeformation;renderer.visualTilt=cover?coverTilt:innerTilt;renderer.frostGradient=cover?coverGradient:innerGradient;renderer.innerRevealEnabled=true;renderer.innerBrightness=innerLight;renderer.coverBrightness=coverLight;renderer.split=cover?0:.5f;renderer.horizontal=false;renderer.moveRight=cover;renderer.strength=innerStrength;renderer.coverMaxAngle=cover?coverMaxAngle:-1;renderer.blur=cover?coverFrost:innerFrost;
+        if(secondaryPresentation!=null){secondaryPresentation.renderer.referenceGlass=referenceGlass;secondaryPresentation.renderer.edgeDeformation=edgeDeformation;secondaryPresentation.renderer.visualTilt=secondaryPresentation.cover?coverTilt:innerTilt;secondaryPresentation.renderer.frostGradient=secondaryPresentation.cover?coverGradient:innerGradient;secondaryPresentation.renderer.coverBrightness=coverLight;secondaryPresentation.renderer.innerBrightness=innerLight;secondaryPresentation.renderer.strength=innerStrength;secondaryPresentation.renderer.coverMaxAngle=secondaryPresentation.cover?coverMaxAngle:-1;secondaryPresentation.renderer.blur=secondaryPresentation.cover?coverFrost:innerFrost;secondaryPresentation.render(displayed,dirty);}
         if(needsDraw){surface.requestRender();dirty=false;}
         if(time-lastStatus>500_000_000L){drawRate=lastStatus==0?0:(renderer.draws-previousDraws)/((time-lastStatus)/1e9f);previousDraws=renderer.draws;lastStatus=time;if(!hidden)updateStatus();}
         if(time-lastSample>1_000_000_000L){lastSample=time;note("frame",String.format(Locale.US,"angle=%.2f,draws=%d,max_callback_ms=%.1f,surface=%dx%d,secondary_draws=%d,secondary_gl=%s,pivot=%.2f",displayed,renderer.draws,maxFrameMs,renderer.surfaceWidth,renderer.surfaceHeight,secondaryPresentation==null?0:secondaryPresentation.renderer.draws,secondaryPresentation==null?"none":secondaryPresentation.renderer.error,renderer.split));}
@@ -337,7 +334,7 @@ public final class MainActivity extends Activity implements SensorEventListener,
             secondaryPresentation=new SecondaryPresentation(this,candidate,cover?coverImage:innerImage,displayed,cover,coverMaxAngle,innerStrength,frost,()->setHidden(false));
             SecondaryPresentation created=secondaryPresentation;
             created.setOnDismissListener(dialog->{if(secondaryPresentation==created){secondaryPresentation=null;if(resumed)root.post(this::refreshCover);}});
-            created.renderer.referenceGlass=referenceGlass;created.renderer.visualTilt=cover?coverTilt:innerTilt;created.renderer.frostGradient=cover?coverGradient:innerGradient;created.renderer.blur=cover?coverFrost:innerFrost;created.renderer.innerRevealEnabled=true;created.renderer.innerBrightness=innerLight;created.renderer.coverBrightness=coverLight;created.show();
+            created.renderer.referenceGlass=referenceGlass;created.renderer.edgeDeformation=edgeDeformation;created.renderer.visualTilt=cover?coverTilt:innerTilt;created.renderer.frostGradient=cover?coverGradient:innerGradient;created.renderer.blur=cover?coverFrost:innerFrost;created.renderer.innerRevealEnabled=true;created.renderer.innerBrightness=innerLight;created.renderer.coverBrightness=coverLight;created.show();
             note("secondary","presentation display="+candidate.getDisplayId()+" cover="+secondaryPresentation.cover);dirty=true;
         }catch(WindowManager.InvalidDisplayException|WindowManager.BadTokenException|SecurityException e){secondaryPresentation=null;note("cover",e.toString());}
     }
