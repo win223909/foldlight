@@ -21,7 +21,7 @@ Instrumentation tests require an unlocked, compatible device and may temporarily
 
 `tools/hinge_usb_bridge.py` is a developer-only USB diagnostic fallback; the app normally uses its authorized on-device Shizuku service. Hardware behavior and frame smoothness require physical verification. See [BUILDING.md](../docs/BUILDING.md) and [COMPATIBILITY.md](../docs/COMPATIBILITY.md).
 
-## Reference glass experiment (0.3.7-preview)
+## Reference glass experiment (0.3.7-preview.2)
 
 Settings → **参考玻璃 · 实验效果** switches between the new projection and the existing effect. The preview enables this option by default; its choice is persisted. Both modes share your images and settings. In reference mode the deformation angle controls virtual depth, while the four brightness envelopes retain their timing but preserve at least 45% color transmission. The inner right half bypasses all effect shading. This is an independently implemented visual study inspired by https://bonxn.github.io/dood-iphone-duo/; no model, imagery or video from that site is bundled.
 

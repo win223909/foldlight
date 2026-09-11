@@ -129,15 +129,22 @@ public final class FoldRenderer implements GLSurfaceView.Renderer {
             // The fixed inner half bypasses focus, dimming and edge shading entirely.
             if(!moving){color=vec4(sharp,1.);return;}
             float front=1.18-1.3*smoothstep(0.,.6,opening);
-            float coverFocus=smoothstep(front-.18,front+.18,x)*smoothstep(0.,.12,opening);
-            float innerFocus=pow(1.-opening,.8)*smoothstep(0.,.65,x);
+            float coverFocus=smoothstep(front-.42,front+.42,x)*smoothstep(0.,.12,opening);
+            float innerFocus=pow(1.-opening,.8)*smoothstep(0.,1.,x);
             float amount=isCover?coverFocus:innerFocus;
             float uniformFocus=isCover?smoothstep(0.,.6,opening):pow(1.-opening,.8);
             amount=mix(uniformFocus,amount,frostGradient);
             float radius=frost*length*.22*amount;
             float texelRadius=radius*base;
-            vec3 soft=textureLod(glassPhoto,texUV,log2(max(max(base,texelRadius)/glassSigma,1.))).rgb;
-            vec3 pixel=mix(sharp,soft,clamp(texelRadius*texelRadius/(glassSigma*glassSigma),0.,1.));
+            // Ease fine detail out before the cached Gaussian takes over. A hard
+            // sharp-to-Gaussian clamp at one sigma created a visible focus contour.
+            float radiusSquared=texelRadius*texelRadius;
+            float fineLod=log2(max(base,sqrt(base*base+radiusSquared*.25)));
+            vec3 fine=textureLod(photo,texUV,fineLod).rgb;
+            float softLod=log2(max(base/glassSigma,sqrt(1.+radiusSquared/(glassSigma*glassSigma))));
+            vec3 soft=textureLod(glassPhoto,texUV,softLod).rgb;
+            float blend=1.-exp(-radiusSquared/(glassSigma*glassSigma));
+            vec3 pixel=mix(fine,soft,blend);
             // Shade only where projection leaves the content, with a soft optical edge.
             float cross=horizontal?hit.x:hit.y;
             float hitAxis=horizontal?hit.y:hit.x;
