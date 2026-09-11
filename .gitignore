@@ -1,6 +1,7 @@
 # Local secrets and device state
 .env
 .env.*
+*.env
 !.env.example
 *.key
 *.pem

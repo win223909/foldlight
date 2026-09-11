@@ -21,7 +21,7 @@ errors=[]
 for name in sorted(set(filter(None,selected))):
     path=ROOT/name
     if not path.is_file():continue
-    if path.suffix.lower() in {'.apk','.aab','.ipa','.dmg','.pem','.key','.jks','.keystore','.p12','.mobileprovision','.sqlite','.db'} or path.name=='local.properties' or (path.name.startswith('.env') and path.name!='.env.example'):
+    if path.suffix.lower() in {'.apk','.aab','.ipa','.dmg','.pem','.key','.jks','.keystore','.p12','.mobileprovision','.sqlite','.db'} or path.name=='local.properties' or ((path.name.startswith('.env') or path.name.endswith('.env')) and path.name!='.env.example'):
         errors.append(f'{name}: prohibited local/artifact file');continue
     if path.stat().st_size>2_000_000:errors.append(f'{name}: oversized source file')
     try:text=path.read_text()

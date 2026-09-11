@@ -11,3 +11,5 @@ Public CI uses generated fixtures and build-only native validation. Physical And
 贡献时请说明平台、系统版本、复现步骤、实际结果和预期结果。较大改动先提交 Issue；提交前运行对应检查和公开内容扫描。真机开合效果需要记录真实验证范围，不能仅凭目标帧率声称流畅。
 
 Contributions are provided under the repository MIT license. Be respectful, specific and constructive in issues and reviews.
+
+Dependency updates are opt-in: review and rename `.github/dependabot.yml.example` when ready. Native sensor paths and pinned build tools need compatibility review before upgrades.

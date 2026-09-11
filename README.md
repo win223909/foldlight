@@ -51,7 +51,7 @@ Settings are grouped by **Cover → Opening / Closing**, **Inner left → Openin
 - `android/`: Java / OpenGL ES app, hinge input and Shizuku service.
 - `analytics/`: optional authenticated, log-based visitor statistics; not required by the demo.
 - `docs/`: architecture, build, compatibility and release guidance.
-- `.github/`: CI, issue forms, pull-request template and dependency updates.
+- `.github/`: CI, issue forms, pull-request template and an opt-in dependency-update template.
 
 ## Compatibility and verification
 
