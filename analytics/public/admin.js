@@ -9,6 +9,7 @@ function country(code){if(!code)return '未提供';try{return regions?.of(code)|
 async function get(url,signal){const res=await fetch(url,{signal,cache:'no-store'});if(res.status===401||res.status===403)throw Error('登录验证失败，请重新打开后台登录。');if(!res.ok||!res.headers.get('content-type')?.includes('application/json'))throw Error('暂时无法读取统计，请稍后刷新。');return res.json()}
 function overview(data){
  $('#pageviews').textContent=number(data.totals.pageviews);$('#unique-ips').textContent=number(data.totals.unique_ips);$('#downloads').textContent=number(data.totals.downloads);
+ $('#download-breakdown').textContent='Mac '+number(data.totals.downloads_mac)+' · Fold8 '+number(data.totals.downloads_fold8);
  $('#started-at').textContent='统计启用时间：'+date(data.started_at);
  const lag=Date.now()-data.last_ingest_at;$('#live-label').textContent=(lag>15000?'采集更新较慢 · ':'已更新 · ')+date(data.updated_at);
  const chart=$('#chart');chart.replaceChildren();
@@ -29,7 +30,7 @@ function overview(data){
 function records(data){
  total=data.total;const body=$('#rows');body.replaceChildren();
  if(!data.rows.length){const cell=element('td','还没有匹配的访问记录。新访问通常在几秒内出现。','empty');cell.colSpan=7;const tr=element('tr');tr.append(cell);body.append(tr)}
- for(const row of data.rows){const tr=element('tr'),at=element('td',date(row.at)),ip=element('td',row.ip,'mono'),device=element('td',row.device),browser=element('td',row.browser),region=element('td',country(row.country)),ref=element('td',row.referrer||'直接或未提供'),kind=element('td',row.kind==='page'?'页面访问':'Mac 下载');device.append(element('small',row.system));if(row.bot)browser.append(element('small','疑似机器人'));kind.append(element('small',row.path));tr.append(at,ip,device,browser,region,ref,kind);body.append(tr)}
+ for(const row of data.rows){const tr=element('tr'),at=element('td',date(row.at)),ip=element('td',row.ip,'mono'),device=element('td',row.device),browser=element('td',row.browser),region=element('td',country(row.country)),ref=element('td',row.referrer||'直接或未提供'),kind=element('td',row.kind==='page'?'页面访问':row.path.endsWith('.apk')?'Fold8 下载':'Mac 下载');device.append(element('small',row.system));if(row.bot)browser.append(element('small','疑似机器人'));kind.append(element('small',row.path));tr.append(at,ip,device,browser,region,ref,kind);body.append(tr)}
  $('#record-count').textContent='共 '+number(total)+' 条匹配记录';$('#page-info').textContent='第 '+page+' / '+Math.max(1,Math.ceil(total/50))+' 页';$('#prev').disabled=page<=1;$('#next').disabled=page*50>=total;
 }
 async function load(){

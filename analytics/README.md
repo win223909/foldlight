@@ -16,6 +16,15 @@ Put it behind Cloudflare Access and restrict your own admin policy. The service 
 
 A dedicated nginx log must supply `at` (Unix seconds), `ip`, `method`, `path`, `status`, `ua`, `referrer` (host only) and `country` as JSON fields; see the tests for exact fixtures. Never trust proxy IP headers directly from arbitrary Internet clients. Configure a trusted local tunnel/proxy boundary yourself.
 
-Successful homepage GETs count as visits; this version recognizes Mac DMG GETs as download requests. Range requests/retries are separate requests, IPs are not unique people, UA-based device/bot classification is approximate, and retention is at most 90 days / one million details. Do not claim APK download counts without extending the parser/tests.
+Successful homepage GETs count as visits; successful Mac DMG and Fold8 APK GETs count as download requests, with separate platform subtotals. Range requests/retries are separate requests, IPs are not unique people, UA-based device/bot classification is approximate, and retention is at most 90 days / one million details. Both the nginx logging allowlist and parser must include APK paths. Previously unlogged APK requests cannot be backfilled.
 
 The test-only preview server bypasses authentication with synthetic temporary data on localhost; never deploy the tests directory. Use your own process manager and environment file. No production server installation script is included.
+
+The existing nginx `map $uri $duo_visit_log` must include both installer rules:
+
+```nginx
+~^/downloads/Foldlight-[0-9.]+-macOS\.dmg$ 1;
+~^/downloads/Foldlight-Fold8-[0-9.]+\.apk$ 1;
+```
+
+Keep the existing homepage rules, JSON format and authentication configuration. Validate nginx before reloading it. No database migration is needed for Fold8 counts.

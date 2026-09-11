@@ -20,7 +20,7 @@ from zoneinfo import ZoneInfo
 
 TZ = ZoneInfo('Asia/Shanghai')
 PUBLIC = Path(__file__).parent / 'public'
-DOWNLOAD = re.compile(r'^/downloads/Foldlight-[0-9.]+-macOS\.dmg$')
+DOWNLOAD = re.compile(r'^/downloads/Foldlight-(?:[0-9.]+-macOS\.dmg|Fold8-[0-9.]+\.apk)$')
 BOT = re.compile(r'bot|spider|crawler|headless|curl|wget|python|Go-http-client|DuoAnalyticsVerification', re.I)
 
 
@@ -55,7 +55,7 @@ def device_info(ua):
 
 
 def normalize(raw, now=None):
-    """Only successful document loads and DMG GET requests count, never assets/HEAD."""
+    """Only successful document loads and installer GET requests count, never assets/HEAD."""
     now = time.time() if now is None else now
     try:
         item = json.loads(raw)
@@ -178,7 +178,9 @@ class Store:
         with self.connect() as db:
             totals = dict(db.execute(f'''SELECT
                 SUM(kind='page') AS pageviews,COUNT(DISTINCT CASE WHEN kind='page' THEN ip END) AS unique_ips,
-                SUM(kind='download') AS downloads,SUM(bot) AS bots FROM visits WHERE {where}''', args).fetchone())
+                SUM(kind='download') AS downloads,
+                SUM(kind='download' AND path LIKE '/downloads/Foldlight-Fold8-%.apk') AS downloads_fold8,
+                SUM(kind='download' AND path LIKE '/downloads/Foldlight-%-macOS.dmg') AS downloads_mac,SUM(bot) AS bots FROM visits WHERE {where}''', args).fetchone())
             for key in totals:
                 totals[key] = totals[key] or 0
             granularity = '%Y-%m-%d %H:00' if days == 1 else '%Y-%m-%d'

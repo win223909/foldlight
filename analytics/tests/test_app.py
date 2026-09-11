@@ -31,6 +31,22 @@ class StatisticsTests(unittest.TestCase):
             self.assertIsNone(normalize(event(**kw)),kw)
         for raw in [b'null',b'[]',b'{',b'3',b'"x"']: self.assertIsNone(normalize(raw))
         self.assertEqual(normalize(event(path='/downloads/Foldlight-0.2.3-macOS.dmg',status=206))[3],'download')
+    def test_fold8_downloads_count_alongside_mac_and_export(self):
+        apk='/downloads/Foldlight-Fold8-0.3.7.apk'
+        for status in (200,206):
+            self.assertEqual(normalize(event(path=apk,status=status))[3],'download')
+        for kw in [dict(method='HEAD'),dict(status=404),dict(path=apk+'.sha256'),dict(path='/downloads/Foldlight-Fold8-0.3.7-ReadMe.txt'),dict(path='/downloads/other.apk')]:
+            self.assertIsNone(normalize(event(**{'path':apk,**kw})),kw)
+        self.log.write_bytes(event()+event(path=apk)+event(path=apk,status=206)+event(path='/downloads/Foldlight-0.2.4-macOS.dmg')+event(path=apk,ua='TestBot'))
+        self.store.ingest(self.log)
+        totals=self.store.summary({})['totals']
+        self.assertEqual((totals['pageviews'],totals['downloads'],totals['downloads_mac'],totals['downloads_fold8']),(1,3,1,2))
+        self.assertEqual(self.store.summary({'bots':['1']})['totals']['downloads_fold8'],3)
+        records=self.store.records({'kind':['download']},export=True)
+        self.assertEqual(records['total'],3)
+        self.assertIn(apk.encode(),csv_data(records['rows']))
+        self.assertEqual(sum(row['downloads'] for row in self.store.summary({})['trend']),3)
+
     def test_partial_rotation_dedup_and_filters(self):
         first=event(); second=event(ip='203.0.113.9');bot=event(ua='TestBot')
         self.log.write_bytes(first+second[:-1]);self.store.ingest(self.log)
