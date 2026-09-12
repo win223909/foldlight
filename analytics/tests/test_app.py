@@ -6,12 +6,13 @@ import time
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError
 from http.server import ThreadingHTTPServer
 import jwt
 from cryptography.hazmat.primitives.asymmetric import rsa
-from analytics.app import Store, normalize, AccessAuth, handler_for, csv_data
+from analytics.app import Store, normalize, AccessAuth, AccessKeyCache, AuthUnavailable, handler_for, csv_data
 
 UA='Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Version/18.0 Mobile/15E148 Safari/604.1'
 def event(**changes):
@@ -88,6 +89,20 @@ class StatisticsTests(unittest.TestCase):
                 self.assertIn('no-store',response.headers['Cache-Control'])
             with self.assertRaises(HTTPError) as ctx:urlopen(Request(base+'/admin/api/visits?days=999',headers={'Cf-Access-Jwt-Assertion':'unit-test-token'}))
             self.assertEqual(ctx.exception.code,400)
+            def unavailable(token):
+                raise AuthUnavailable()
+            auth.verify = unavailable
+            for path in ['/admin/', '/admin/api/summary', '/admin/admin.js']:
+                with self.assertRaises(HTTPError) as ctx:
+                    urlopen(Request(base+path,headers={'Cf-Access-Jwt-Assertion':'unit-test-token'}))
+                self.assertEqual(ctx.exception.code,503)
+                self.assertEqual(ctx.exception.headers['Retry-After'],'10')
+                body = ctx.exception.read()
+                self.assertNotIn(b'203.0.113.8',body)
+                self.assertNotIn(b'unit-test-token',body)
+                if path == '/admin/':
+                    self.assertIn(b'http-equiv="refresh"',body)
+                    self.assertIn('后台连接恢复中'.encode(),body)
         finally:server.shutdown();server.server_close();thread.join()
 
 class AuthTests(unittest.TestCase):
@@ -107,5 +122,41 @@ class AuthTests(unittest.TestCase):
         self.assertFalse(self.auth.verify('.'.join(parts)))
         self.assertFalse(self.auth.verify(jwt.encode({'email':'admin@example.com'},key=None,algorithm='none')))
         self.assertFalse(self.auth.verify(''));self.assertFalse(self.auth.verify('x'*17000))
+
+    def test_public_keys_survive_network_failure_and_restart_but_expire(self):
+        jwk = json.loads(jwt.algorithms.RSAAlgorithm.to_jwk(self.private.public_key()))
+        jwk.update(kid='current', use='sig', alg='RS256')
+        keyset = {'keys':[jwk]}
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)/'keys.json'
+            auth = AccessAuth(self.auth.issuer,self.auth.audience,self.auth.email,path)
+            token = jwt.encode(dict(iss=auth.issuer,aud=auth.audience,email=auth.email,
+                                   iat=int(time.time()),exp=int(time.time())+600),
+                               self.private,algorithm='RS256',headers={'kid':'current'})
+            with patch('urllib.request.urlopen',side_effect=TimeoutError()):
+                with self.assertRaises(AuthUnavailable): auth.verify(token)
+                auth.keys.jwk_set_cache.put(keyset)
+                self.assertTrue(auth.verify(token))
+                restarted = AccessAuth(auth.issuer,auth.audience,auth.email,path)
+                self.assertTrue(restarted.verify(token))
+                original_time = restarted.keys.jwk_set_cache.fetched_at
+                with self.assertRaises(jwt.PyJWKClientConnectionError): restarted.keys.fetch_data()
+                self.assertEqual(restarted.keys.jwk_set_cache.fetched_at,original_time)
+                self.assertTrue(restarted.verify(token))
+                with patch('analytics.app.time.time',return_value=original_time+3601):
+                    with self.assertRaises(AuthUnavailable): restarted.verify(token)
+                self.assertIsNone(AccessKeyCache(path,'https://other.cloudflareaccess.com').get())
+                with self.assertRaises(Exception): restarted.keys.jwk_set_cache.put({'keys':[]})
+                self.assertEqual(restarted.keys.jwk_set_cache.fetched_at,original_time)
+                self.assertTrue(restarted.verify(token))
+
+    def test_background_refresh_retries_then_recovers(self):
+        auth = AccessAuth(self.auth.issuer,self.auth.audience,self.auth.email)
+        stopped = SimpleNamespace(is_set=lambda:False,wait=lambda delay:delays.append(delay) or len(delays)==2)
+        delays = []
+        with patch.object(auth.keys,'fetch_data',side_effect=[jwt.PyJWKClientConnectionError('timeout'),{}]) as fetch:
+            auth.refresh(stopped)
+            self.assertEqual(fetch.call_count,2)
+        self.assertEqual(delays,[30,300])
 
 if __name__=='__main__':unittest.main()

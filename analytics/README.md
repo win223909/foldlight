@@ -14,6 +14,8 @@ Required environment values: `DUO_ACCESS_ISSUER`, `DUO_ACCESS_AUD`, `DUO_ADMIN_E
 
 Put it behind Cloudflare Access and restrict your own admin policy. The service independently verifies RS256 JWT signature, issuer, audience, timestamps and configured email. Missing or forged credentials fail closed. The repository contains no Access tenant, audience, account, server credentials or visitor data.
 
+Public verification keys are refreshed every five minutes (retrying after 30 seconds on network failure), and persisted as `access-public-keys.json` in `DUO_DATA_DIR`. The one-hour validity limit is preserved across service restarts; expired keys never authorize a request. Verification connection failures return HTTP 503 with `Retry-After`, and the admin entry page retries automatically, instead of reporting a rejected login. Keep the data directory writable only by the service account.
+
 A dedicated nginx log must supply `at` (Unix seconds), `ip`, `method`, `path`, `status`, `ua`, `referrer` (host only) and `country` as JSON fields; see the tests for exact fixtures. Never trust proxy IP headers directly from arbitrary Internet clients. Configure a trusted local tunnel/proxy boundary yourself.
 
 Successful homepage GETs count as visits; successful Mac DMG and Fold8 APK GETs count as download requests, with separate platform subtotals. Range requests/retries are separate requests, IPs are not unique people, UA-based device/bot classification is approximate, and retention is at most 90 days / one million details. Both the nginx logging allowlist and parser must include APK paths. Previously unlogged APK requests cannot be backfilled.

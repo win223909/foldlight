@@ -207,13 +207,65 @@ class Store:
         return {'rows':rows,'total':count,'page':page,'limit':limit,'truncated':export and count>limit}
 
 
+class AuthUnavailable(Exception):
+    """Verification infrastructure failed; this is not a rejected login."""
+
+
+class AccessKeyCache:
+    """Persist only public keys, with the same one-hour limit across restarts."""
+    def __init__(self, path, issuer):
+        self.path, self.issuer = Path(path) if path else None, issuer
+        self.lock = threading.Lock()
+        self.data, self.fetched_at = None, 0
+        if self.path:
+            try:
+                saved = json.loads(self.path.read_text())
+                if saved['issuer'] == issuer:
+                    self.data, self.fetched_at = saved['keys'], float(saved['fetched_at'])
+            except (OSError, ValueError, KeyError, TypeError):
+                pass
+
+    def get(self):
+        with self.lock:
+            age = time.time() - self.fetched_at
+            return self.data if 0 <= age < 3600 else None
+
+    def put(self, data):
+        import jwt
+        # Validate before replacing a usable set or resetting its expiry.
+        if not isinstance(data, dict) or not jwt.PyJWKSet.from_dict(data).keys:
+            raise ValueError('Invalid Access public key set')
+        with self.lock:
+            self.data, self.fetched_at = data, time.time()
+            if self.path:
+                try:
+                    temporary = self.path.with_suffix('.tmp')
+                    temporary.write_text(json.dumps(dict(issuer=self.issuer, keys=data, fetched_at=self.fetched_at)))
+                    temporary.replace(self.path)
+                except OSError:
+                    print('Access public key cache persistence failed', flush=True)
+
+
 class AccessAuth:
-    def __init__(self, issuer, audience, email):
+    def __init__(self, issuer, audience, email, cache_path=None):
         import jwt
         if not re.fullmatch(r'https://[a-z0-9-]+\.cloudflareaccess\.com', issuer) or not audience or not email:
             raise ValueError('Cloudflare Access configuration is required')
         self.jwt, self.issuer, self.audience, self.email = jwt, issuer, audience, email.lower()
         self.keys = jwt.PyJWKClient(issuer+'/cdn-cgi/access/certs', cache_jwk_set=True, lifespan=3600, timeout=5)
+        self.keys.jwk_set_cache = AccessKeyCache(cache_path, issuer)
+
+    def refresh(self, stopped):
+        # Refresh well before expiry, without blocking requests using valid keys.
+        while not stopped.is_set():
+            try:
+                self.keys.fetch_data()
+                delay = 300
+            except Exception as error:
+                print('Access public key refresh retry:', type(error).__name__, flush=True)
+                delay = 30
+            if stopped.wait(delay):
+                break
     def verify(self, token):
         if not token or len(token)>16384: return False
         try:
@@ -221,6 +273,8 @@ class AccessAuth:
             claims = self.jwt.decode(token,key.key,algorithms=['RS256'],audience=self.audience,issuer=self.issuer,
                                      options={'require':['exp','iat','iss','aud','email']})
             return claims['email'].lower() == self.email and claims.get('type','app') == 'app'
+        except self.jwt.PyJWKClientConnectionError as error:
+            raise AuthUnavailable() from error
         except Exception:
             return False
 
@@ -257,7 +311,22 @@ def handler_for(store, auth):
             parsed = urlsplit(self.path)
             if parsed.path=='/health':
                 self.send(200,b'{"ok":true}'); return
-            if not auth.verify(self.headers.get('Cf-Access-Jwt-Assertion','')):
+            try:
+                authorized = auth.verify(self.headers.get('Cf-Access-Jwt-Assertion',''))
+            except AuthUnavailable:
+                if parsed.path == '/admin/':
+                    body = ('<!doctype html><html lang="zh-CN"><meta charset="utf-8">'
+                            '<meta name="viewport" content="width=device-width,initial-scale=1">'
+                            '<meta http-equiv="refresh" content="10;url=/admin/">'
+                            '<title>后台连接恢复中 · 折光</title><body><main>'
+                            '<h1>后台连接恢复中</h1><p>登录验证服务暂时连接超时，正在重试。'
+                            '无需更改账号授权，10 秒后自动重新连接。</p>'
+                            '<a href="/admin/">立即重试</a></main></body></html>').encode()
+                    self.send(503, body, 'text/html; charset=utf-8', {'Retry-After':'10'})
+                else:
+                    self.send(503,b'{"error":"Login verification temporarily unavailable"}',extra={'Retry-After':'10'})
+                return
+            if not authorized:
                 self.send(403,b'{"error":"Cloudflare Access authorization required"}'); return
             assets = {'/admin/':('index.html','text/html; charset=utf-8'),'/admin/admin.js':('admin.js','text/javascript; charset=utf-8'),'/admin/admin.css':('admin.css','text/css; charset=utf-8')}
             if parsed.path in assets:
@@ -298,8 +367,9 @@ if __name__=='__main__':
     data_dir=Path(os.environ.get('DUO_DATA_DIR','/var/lib/duo-analytics'))
     data_dir.mkdir(parents=True,exist_ok=True)
     store=Store(data_dir/'visits.sqlite')
-    auth=AccessAuth(os.environ['DUO_ACCESS_ISSUER'],os.environ['DUO_ACCESS_AUD'],os.environ['DUO_ADMIN_EMAIL'])
+    auth=AccessAuth(os.environ['DUO_ACCESS_ISSUER'],os.environ['DUO_ACCESS_AUD'],os.environ['DUO_ADMIN_EMAIL'],data_dir/'access-public-keys.json')
     stopped=threading.Event()
+    threading.Thread(target=auth.refresh,args=(stopped,),daemon=True).start()
     threading.Thread(target=collect,args=(store,Path(os.environ.get('DUO_LOG_DIR','/var/log/duo-analytics')),stopped),daemon=True).start()
     server=ThreadingHTTPServer(('127.0.0.1',int(os.environ.get('DUO_PORT','4189'))),handler_for(store,auth))
     server.daemon_threads=True
