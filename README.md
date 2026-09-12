@@ -37,7 +37,7 @@ npm run build         # build/WebRelease/duo-static
 npm run check:public  # scan the files selected for Git
 ```
 
-Native builds, optional analytics setup and real-device checks are documented in [BUILDING.md](docs/BUILDING.md). Download links in the source website point to hosted, versioned packages; large installers are kept out of Git.
+Native builds and real-device checks are documented in [BUILDING.md](docs/BUILDING.md). Download links in the source website point to hosted, versioned packages; large installers are kept out of Git.
 
 ## Fold8 controls
 
@@ -49,13 +49,12 @@ Settings are grouped by **Cover → Opening / Closing**, **Inner left → Openin
 - `DuoLikeAnimation/` and `.xcodeproj`: native iPhone app; the upstream target name is retained.
 - `macos/`: AppKit / SwiftUI, ScreenCaptureKit and Metal desktop app.
 - `android/`: Java / OpenGL ES app, hinge input and Shizuku service.
-- `analytics/`: optional authenticated, log-based visitor statistics; not required by the demo.
 - `docs/`: architecture, build, compatibility and release guidance.
 - `.github/`: CI, issue forms, pull-request template and an opt-in dependency-update template.
 
 ## Compatibility and verification
 
-CI checks web tests and static builds, Android unit tests/lint/build, analytics tests, a Mac universal build and an iOS Simulator build. GPU and sensor checks require suitable physical hardware; passing CI does not prove real folding smoothness. See [COMPATIBILITY.md](docs/COMPATIBILITY.md).
+CI checks web tests and static builds, Android unit tests/lint/build, a Mac universal build and an iOS Simulator build. GPU and sensor checks require suitable physical hardware; passing CI does not prove real folding smoothness. See [COMPATIBILITY.md](docs/COMPATIBILITY.md).
 
 The repository uses an original vector demo screen. Personal wallpapers, third-party device screenshots, signing credentials, deployment secrets, visitor records and device logs are excluded. Existing production releases may use different demo artwork.
 

@@ -35,9 +35,9 @@ npm run check:public
 
 ## 目录与验证
 
-`web/` 为网页；`DuoLikeAnimation/` 为 iPhone；`macos/` 为 Mac；`android/` 为 Fold8；`analytics/` 是可选的受保护访问统计模块。文档在 `docs/`，自动化检查在 `.github/`。
+`web/` 为网页；`DuoLikeAnimation/` 为 iPhone；`macos/` 为 Mac；`android/` 为 Fold8。文档在 `docs/`，自动化检查在 `.github/`。
 
-CI 执行网页测试与构建、Android 单元测试/lint/构建、统计模块测试、Mac 通用构建及 iOS 模拟器构建。连续开合手感和 GPU 检查仍需真机，不能用 CI 通过替代。详见 [兼容性说明](docs/COMPATIBILITY.md)。
+CI 执行网页测试与构建、Android 单元测试/lint/构建、Mac 通用构建及 iOS 模拟器构建。连续开合手感和 GPU 检查仍需真机，不能用 CI 通过替代。详见 [兼容性说明](docs/COMPATIBILITY.md)。
 
 公开源码使用自制矢量示例。个人壁纸、第三方桌面截图、部署密钥、签名文件、访问明细和真机日志不进入仓库；线上旧版示例素材可能与源码不同。
 

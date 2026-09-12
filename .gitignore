@@ -36,3 +36,6 @@ __pycache__/
 *.xcresult/
 .playwright-cli/
 output/
+
+# Website administration is maintained outside this public repository
+/analytics/

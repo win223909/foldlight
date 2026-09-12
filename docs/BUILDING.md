@@ -58,18 +58,6 @@ Install full Xcode and select it with `xcode-select` if necessary. The script bu
 
 Output: `build/MacApp/Foldlight.app`. The tests require Metal hardware and use generated images; CI performs a universal build because hosted runner GPU support varies. Set `FOLDLIGHT_SIGN_IDENTITY` only to an identity from your own keychain when you need signing. Notarization is a separate distribution step.
 
-## Optional analytics
-
-Python 3.11+:
-
-```sh
-python3 -m venv .venv
-.venv/bin/pip install -r analytics/requirements.lock
-.venv/bin/python -m unittest discover -s analytics/tests -v
-```
-
-Deployment requires your own Access identity, audience, allowed admin and log paths. See [analytics/README.md](../analytics/README.md). Never expose the test-only preview server or commit visitor data.
-
 ## Before a pull request
 
 ```sh

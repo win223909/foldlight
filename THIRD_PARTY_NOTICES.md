@@ -9,7 +9,6 @@ Foldlight builds on [DuoLikeAnimation](https://github.com/elijah-semyonov/DuoLik
 - AndroidX (Core, Window, Test): Apache-2.0; resolved from Google's Maven repository.
 - Shizuku API: Apache-2.0; [source](https://github.com/RikkaApps/Shizuku-API). Shizuku itself is installed separately by the user.
 - Gradle wrapper: Apache-2.0; wrapper JAR is the only checked-in build-tool binary. The distribution checksum is pinned.
-- PyJWT: MIT; cryptography: Apache-2.0 / BSD-3-Clause; cffi and pycparser: MIT. Versions are pinned in `analytics/requirements.lock`.
 - Apple and Android SDKs/frameworks are provided by their respective vendors; they are not relicensed by this repository.
 
 ## Artwork and fixtures

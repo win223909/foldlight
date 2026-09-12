@@ -24,7 +24,3 @@ ScreenCaptureKit supplies desktop frames to Metal. Lid HID reports are validated
 ## Fold8
 
 Samsung continuous angle logs are read by an authorized Shizuku service, then delivered through Binder to the app. Standard sensor/state paths remain fallbacks. The service manages a temporary concurrent-display session, not a system wallpaper replacement. Gesture-specific deformation and brightness controllers feed OpenGL ES renderers for the cover and inner screen. Only the inner left pane moves; settings are a separate native layer.
-
-## Optional analytics
-
-The website needs no analytics module to run. `analytics/` reads a dedicated nginx log and stores bounded detail in SQLite. It exposes an authenticated admin interface on loopback and checks Cloudflare Access JWTs itself. Do not mix real visitor records into source or test fixtures.

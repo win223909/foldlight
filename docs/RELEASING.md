@@ -10,4 +10,4 @@ Versions are per platform (`android/app/build.gradle`, `macos/Resources/Info.pli
 6. Update hosted download URLs only after uploads succeed. Verify public hashes and retain the previous version for rollback.
 7. Record separately: source checks, CI, installation verification and actual sensor-driven device acceptance.
 
-The repository CI never deploys the live website, server or analytics configuration. Existing hosted downloads are linked from `web/index.html`; replace these URLs when publishing your own builds.
+The repository CI never deploys the live website or server configuration. Existing hosted downloads are linked from `web/index.html`; replace these URLs when publishing your own builds.

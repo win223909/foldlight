@@ -19,6 +19,8 @@ rules = {
 }
 errors=[]
 for name in sorted(set(filter(None,selected))):
+    if name.startswith('analytics/'):
+        errors.append(f'{name}: website administration is excluded from the public repository');continue
     path=ROOT/name
     if not path.is_file():continue
     if path.suffix.lower() in {'.apk','.aab','.ipa','.dmg','.pem','.key','.jks','.keystore','.p12','.mobileprovision','.sqlite','.db'} or path.name=='local.properties' or ((path.name.startswith('.env') or path.name.endswith('.env')) and path.name!='.env.example'):
