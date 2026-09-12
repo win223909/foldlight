@@ -48,6 +48,29 @@ class StatisticsTests(unittest.TestCase):
         self.assertIn(apk.encode(),csv_data(records['rows']))
         self.assertEqual(sum(row['downloads'] for row in self.store.summary({})['trend']),3)
 
+    def test_ip_groups_cover_all_records_and_paginate_by_ip(self):
+        now=time.time()
+        entries=[event(at=now-i,ip='203.0.113.1') for i in range(60)]
+        entries += [event(at=now-100-i,ip='203.0.113.'+str(i)) for i in range(2,28)]
+        entries += [event(at=now-200,ip='203.0.113.1',path='/downloads/Foldlight-Fold8-0.3.7.apk'),event(at=now-201,ip='203.0.113.1',ua='TestBot')]
+        self.log.write_bytes(b''.join(entries));self.store.ingest(self.log)
+        groups=self.store.groups({})
+        self.assertEqual((groups['total'],groups['records_total'],len(groups['groups'])),(27,87,25))
+        first=groups['groups'][0]
+        self.assertEqual((first['ip'],first['count'],first['pageviews'],first['downloads']),('203.0.113.1',61,60,1))
+        page2=self.store.groups({'page':['2']})
+        self.assertEqual(len(page2['groups']),2)
+        self.assertFalse({r['ip'] for r in groups['groups']} & {r['ip'] for r in page2['groups']})
+        details=self.store.records({'ip':['203.0.113.1'],'exact_ip':['203.0.113.1']})
+        self.assertEqual((details['total'],len(details['rows'])),(61,50))
+        self.assertTrue(all(row['ip']=='203.0.113.1' for row in details['rows']))
+        self.assertEqual(len(self.store.records({'exact_ip':['203.0.113.1'],'page':['2']})['rows']),11)
+        self.assertEqual(self.store.groups({'kind':['download']})['groups'][0]['count'],1)
+        self.assertEqual(self.store.groups({'bots':['1']})['groups'][0]['count'],62)
+        self.assertEqual(self.store.groups({'device':['电脑']})['total'],0)
+        for query in [{'page':['0']},{'kind':['invalid']},{'exact_ip':['203.0.113.']},{'exact_ip':["' OR 1=1"]}]:
+            with self.assertRaises(ValueError):self.store.groups(query)
+
     def test_partial_rotation_dedup_and_filters(self):
         first=event(); second=event(ip='203.0.113.9');bot=event(ua='TestBot')
         self.log.write_bytes(first+second[:-1]);self.store.ingest(self.log)
@@ -80,7 +103,7 @@ class StatisticsTests(unittest.TestCase):
         server=ThreadingHTTPServer(('127.0.0.1',0),handler_for(self.store,auth));thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
         base=f'http://127.0.0.1:{server.server_port}'
         try:
-            for path in ['/admin/','/admin/api/summary','/admin/api/visits','/admin/api/export','/admin/admin.js']:
+            for path in ['/admin/','/admin/api/summary','/admin/api/visits','/admin/api/ip-groups','/admin/api/export','/admin/admin.js']:
                 with self.assertRaises(HTTPError) as ctx:urlopen(Request(base+path,headers={'Cf-Access-Authenticated-User-Email':'admin@example.com'}))
                 self.assertEqual(ctx.exception.code,403)
                 self.assertNotIn(b'203.0.113.8',ctx.exception.read())
@@ -89,6 +112,8 @@ class StatisticsTests(unittest.TestCase):
                 self.assertIn('no-store',response.headers['Cache-Control'])
             with self.assertRaises(HTTPError) as ctx:urlopen(Request(base+'/admin/api/visits?days=999',headers={'Cf-Access-Jwt-Assertion':'unit-test-token'}))
             self.assertEqual(ctx.exception.code,400)
+            with urlopen(Request(base+'/admin/api/ip-groups',headers={'Cf-Access-Jwt-Assertion':'unit-test-token'})) as response:
+                self.assertEqual(json.load(response)['total'],1)
             def unavailable(token):
                 raise AuthUnavailable()
             auth.verify = unavailable

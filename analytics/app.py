@@ -192,12 +192,32 @@ class Store:
             return {'totals':totals,'trend':trend,'breakdowns':breakdowns,'days':days,
                     'start':start.isoformat(),'updated_at':int(time.time()*1000),'started_at':int(meta['started_at']),
                     'last_ingest_at':int(meta.get('last_ingest_at','0')),'retention_days':90}
-    def records(self, query, export=False):
+    def record_where(self, query):
         where, args, _, _ = self.where(query)
         kind = query.get('kind',['all'])[0]
         if kind != 'all':
             if kind not in ('page','download'): raise ValueError('kind')
             where += ' AND kind=?'; args.append(kind)
+        if 'exact_ip' in query:
+            address = str(ipaddress.ip_address(query['exact_ip'][0]))
+            where += ' AND ip=?'; args.append(address)
+        return where, args
+
+    def groups(self, query):
+        where, args = self.record_where(query)
+        page = int(query.get('page',['1'])[0])
+        if not 1 <= page <= 40000: raise ValueError('page')
+        limit = 25
+        with self.connect() as db:
+            totals = db.execute(f'SELECT COUNT(*) AS records, COUNT(DISTINCT ip) AS ips FROM visits WHERE {where}', args).fetchone()
+            rows = [dict(row) for row in db.execute(f'''SELECT ip, COUNT(*) AS count,
+                MIN(at) AS first_at, MAX(at) AS last_at,
+                SUM(kind='page') AS pageviews, SUM(kind='download') AS downloads
+                FROM visits WHERE {where} GROUP BY ip ORDER BY last_at DESC, ip ASC LIMIT ? OFFSET ?''', args+[limit,(page-1)*limit])]
+        return {'groups':rows,'total':totals['ips'],'records_total':totals['records'],'page':page,'limit':limit}
+
+    def records(self, query, export=False):
+        where, args = self.record_where(query)
         page = int(query.get('page',['1'])[0])
         if not 1<=page<=20000: raise ValueError('page')
         limit, offset = (10000, 0) if export else (50, (page-1)*50)
@@ -335,6 +355,7 @@ def handler_for(store, auth):
                 query = parse_qs(parsed.query,max_num_fields=12)
                 if parsed.path=='/admin/api/summary': data=store.summary(query)
                 elif parsed.path=='/admin/api/visits': data=store.records(query)
+                elif parsed.path=='/admin/api/ip-groups': data=store.groups(query)
                 elif parsed.path=='/admin/api/export':
                     result=store.records(query,export=True)
                     self.send(200,csv_data(result['rows']),'text/csv; charset=utf-8',{'Content-Disposition':'attachment; filename="duo-visits.csv"','X-Export-Truncated':str(result['truncated']).lower()});return
