@@ -3,7 +3,8 @@ import android.graphics.*;
 /** Original demo artwork. No downloaded device screenshot or baked-in status bar. */
 public final class DemoImage {
  public static Bitmap create(boolean cover) {
-  int w=cover?1248:2448,h=cover?1972:1848;
+  FoldDeviceProfile profile=FoldDeviceProfile.forModel(android.os.Build.MODEL);
+  int w=profile==null?(cover?1248:2448):profile.width(cover),h=profile==null?(cover?1972:1848):profile.height(cover);
   Bitmap b=Bitmap.createBitmap(w,h,Bitmap.Config.ARGB_8888);Canvas c=new Canvas(b);Paint p=new Paint(3);
   int[] colors=cover?new int[]{0xff092838,0xff28637e,0xff76b8c6,0xffd6e7dd}:new int[]{0xff321d34,0xff965653,0xffdfab83,0xfff5dec0};
   p.setShader(new LinearGradient(0,0,w,h,colors,null,Shader.TileMode.CLAMP));c.drawRect(0,0,w,h,p);

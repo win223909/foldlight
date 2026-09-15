@@ -6,6 +6,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
+import com.zksaga.foldlight.FoldDeviceProfile;
 
 /** Shell-owned local/USB request. No sticky cmd override; loss of heartbeats cancels it. */
 public final class DualScreenLease {
@@ -33,36 +34,38 @@ public final class DualScreenLease {
     private static final class DisplayPowerLease {
         private final android.os.IBinder token=new android.os.Binder();
         private final Context context;
+        private final FoldDeviceProfile profile;
         private Object service;
         private Method request;
         private boolean held,unavailable;
-        DisplayPowerLease(Context context){this.context=context;}
+        DisplayPowerLease(Context context,FoldDeviceProfile profile){this.context=context;this.profile=profile;}
         void refresh(){
             if(unavailable)return;
             try{
                 if(!held){
                     android.hardware.display.DisplayManager displays=(android.hardware.display.DisplayManager)context.getSystemService(Context.DISPLAY_SERVICE);
-                    android.view.Display inner=displays.getDisplay(1);
+                    android.view.Display inner=displays.getDisplay(profile.secondaryDisplayId);
                     if(inner==null)return;
                     android.view.Display.Mode mode=inner.getMode();
-                    if(mode.getPhysicalWidth()!=2448||mode.getPhysicalHeight()!=1848)return;
+                    if(!profile.isInner(mode.getPhysicalWidth(),mode.getPhysicalHeight()))return;
                     android.os.IBinder binder=(android.os.IBinder)Class.forName("android.os.ServiceManager").getMethod("getService",String.class).invoke(null,"display");
                     service=Class.forName("android.hardware.display.IDisplayManager$Stub").getMethod("asInterface",android.os.IBinder.class).invoke(null,binder);
                     request=Class.forName("android.hardware.display.IDisplayManager").getMethod("setDisplayStateOverrideWithDisplayId",android.os.IBinder.class,int.class,int.class,int.class);
                 }
-                request.invoke(service,token,android.view.Display.STATE_ON,1,750);
+                request.invoke(service,token,android.view.Display.STATE_ON,profile.secondaryDisplayId,750);
                 if(!held)event("inner power lease acquired, expiry_ms=750");held=true;
             }catch(Exception e){event("inner power lease unavailable: "+e.getClass().getSimpleName());close();unavailable=true;}
         }
         void close(){
-            if(held){try{request.invoke(service,token,android.view.Display.STATE_UNKNOWN,1,0);}catch(Exception ignored){}held=false;event("inner power lease released");}
+            if(held){try{request.invoke(service,token,android.view.Display.STATE_UNKNOWN,profile.secondaryDisplayId,0);}catch(Exception ignored){}held=false;event("inner power lease released");}
         }
     }
     private static volatile long heartbeat;
     @android.annotation.SuppressLint("WrongConstant") // Shell-only device_state service is a hidden system API.
     public static void main(String[] args) throws Exception {
         if(android.os.Process.myUid()!=2000)throw new SecurityException("ADB shell required");
-        if(!android.os.Build.MODEL.equals("SM-F9710"))throw new IllegalStateException("Unverified device");
+        FoldDeviceProfile profile=FoldDeviceProfile.forModel(android.os.Build.MODEL);
+        if(profile==null)throw new IllegalStateException("Unverified device");
         Looper.prepareMainLooper();
         Class<?> threadType=Class.forName("android.app.ActivityThread");
         Object thread=threadType.getMethod("systemMain").invoke(null);
@@ -87,7 +90,7 @@ public final class DualScreenLease {
         int requested=args.length>1?Integer.parseInt(args[1]):4;
         if(requested!=4&&requested!=5)throw new IllegalArgumentException("Concurrent mode required");
         Method cancel=manager.getClass().getMethod("cancelStateRequest");
-        DisplayPowerLease power=new DisplayPowerLease(context);
+        DisplayPowerLease power=new DisplayPowerLease(context,profile);
         AtomicBoolean released=new AtomicBoolean();
         Runnable release=()->{if(released.compareAndSet(false,true))try{power.close();cancel.invoke(manager);event("released");}catch(Exception ignored){}};
         Runtime.getRuntime().addShutdownHook(new Thread(release));

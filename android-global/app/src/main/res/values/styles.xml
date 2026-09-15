@@ -1,0 +1,9 @@
+<resources>
+    <string name="access_description">在翻折时截取当前屏幕，在本机内存中生成玻璃动画。截图不保存、不上传，不读取界面文字，不执行点击。受保护页面跳过；可随时在实验 App 中暂停或关闭此服务。与原版折光 Fold 独立。</string>
+    <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">#007AFF</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowActionModeOverlay">true</item>
+    </style>
+</resources>

@@ -29,6 +29,10 @@ public final class FoldMath {
     public static boolean isCoverSurface(int width,int height) {
         return Math.min(width,height)==1248&&Math.max(width,height)==1972;
     }
+    public static boolean isCoverSurface(int width,int height,String model) {
+        FoldDeviceProfile profile=FoldDeviceProfile.forModel(model);
+        return profile!=null&&profile.isCover(width,height);
+    }
     public static float smooth(float current,float target,float seconds) {
         float dt=clamp(seconds,0,.05f);
         float next=current+(target-current)*(1-(float)Math.exp(-dt/.045f));

@@ -4,6 +4,10 @@
 
 Foldlight builds on [DuoLikeAnimation](https://github.com/elijah-semyonov/DuoLikeAnimation), originally by Elijah Semyonov. Initial upstream source revision: `be92768`. The upstream MIT copyright and permission notice are retained in `LICENSE` and the iPhone app's `OpenSourceLicense.txt`.
 
+## Global edition reference
+
+The global edition references [bunkaich/Folduo](https://github.com/bunkaich/Folduo), MIT, for stable-primary display routing and covered task handover. Adapted capture and window-readiness helpers retain attribution. Copyright (c) 2026 bunkaich. The full license is in `android-global/licenses/Folduo-MIT.txt` and included in the APK. This is not an upstream endorsement or a claim that its device support carries over.
+
 ## Dependencies
 
 - AndroidX (Core, Window, Test): Apache-2.0; resolved from Google's Maven repository.

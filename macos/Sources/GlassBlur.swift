@@ -3,11 +3,11 @@ import Metal
 /// A reusable Gaussian pyramid. Live capture refreshes it only when a new frame arrives.
 final class GlassBlur {
     private let device: MTLDevice
-    private let downsample: MTLRenderPipelineState, gaussian: MTLRenderPipelineState
+    private let gaussian: MTLRenderPipelineState
     private var base: MTLTexture?, glass: MTLTexture?
     private var scratch=[MTLTexture]()
     private var inputWidth=0,inputHeight=0
-    private(set) var baseSigma:Float=4
+    private(set) var baseSigma:Float=1
     init(device:MTLDevice,library:MTLLibrary) throws {
         self.device=device
         func pipeline(_ fragment:String)throws->MTLRenderPipelineState {
@@ -15,14 +15,14 @@ final class GlassBlur {
             desc.fragmentFunction=library.makeFunction(name:fragment);desc.colorAttachments[0].pixelFormat = .bgra8Unorm
             return try device.makeRenderPipelineState(descriptor:desc)
         }
-        downsample=try pipeline("glassDownsample");gaussian=try pipeline("glassGaussian")
+        gaussian=try pipeline("glassGaussian")
     }
     func encode(_ source:MTLTexture,command:MTLCommandBuffer,refresh:Bool)throws->MTLTexture {
         let resized=source.width != inputWidth || source.height != inputHeight
         if resized {
-            var w=source.width,h=source.height,divisor=1
-            while max(w,h)>1024 {w=max(1,w/2);h=max(1,h/2);divisor*=2}
-            baseSigma=4*Float(divisor)
+            // Keep level zero at capture resolution. A reduced base resolution
+            // discarded the small Gaussian kernels, leaving a clear/blur band.
+            let w=source.width,h=source.height
             func texture(_ w:Int,_ h:Int,_ mip:Bool)throws->MTLTexture {
                 let d=MTLTextureDescriptor.texture2DDescriptor(pixelFormat:.bgra8Unorm,width:w,height:h,mipmapped:mip)
                 d.storageMode = .private;d.usage=[.shaderRead,.renderTarget]
@@ -41,8 +41,10 @@ final class GlassBlur {
             var u=settings;e.setRenderPipelineState(pipeline);e.setFragmentTexture(input,index:0)
             e.setFragmentBytes(&u,length:16,index:0);e.drawPrimitives(type:.triangle,vertexStart:0,vertexCount:3);e.endEncoding()
         }
-        try draw(source,base,0,downsample,SIMD4(Float(base.width),Float(base.height),0,0))
         guard let blit=command.makeBlitCommandEncoder() else {throw NSError(domain:"GlassBlur",code:4)}
+        blit.copy(from:source,sourceSlice:0,sourceLevel:0,sourceOrigin:MTLOrigin(x:0,y:0,z:0),
+                  sourceSize:MTLSize(width:source.width,height:source.height,depth:1),
+                  to:base,destinationSlice:0,destinationLevel:0,destinationOrigin:MTLOrigin(x:0,y:0,z:0))
         blit.generateMipmaps(for:base);blit.endEncoding()
         for level in 0..<base.mipmapLevelCount {
             let temp=scratch[level]

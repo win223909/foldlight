@@ -4,16 +4,21 @@
 
 让透视、磨砂玻璃与光影，跟随屏幕的转动和开合。
 
-基于 [Elijah Semyonov 的 DuoLikeAnimation](https://github.com/elijah-semyonov/DuoLikeAnimation) 扩展，现包含网页、iPhone、Mac 和 Fold8 四个平台。
+基于 [Elijah Semyonov 的 DuoLikeAnimation](https://github.com/elijah-semyonov/DuoLikeAnimation) 扩展，现包含网页、iPhone、Mac 和 Android Fold 多端版本。
 
 | 平台 | 功能 | 要求 |
 | --- | --- | --- |
 | 网页 | 转动手机或拖动图片；自选图片、中英文、全屏引导 | 支持 WebGL 2 的现代浏览器；手机感应需要 HTTPS |
 | iPhone | 照片透视与磨砂，随手机姿态变化 | iOS 26.5+，当前 1.0.3 |
-| Mac | 后台菜单栏 App，实时桌面合盖效果 | macOS 13+，Apple Silicon / Intel，当前 0.2.4 |
-| Fold8 | 内外屏独立图片，连续角度跟随，展开与折叠独立调节 | 已实测 SM-F9710 / Android 17 / One UI 9，当前 0.3.7 |
+| Mac | 后台菜单栏 App，实时桌面合盖效果 | macOS 13+，Apple Silicon / Intel，当前 0.2.6 |
+| Android Fold · 图片版 | 内外屏独立图片，连续角度跟随，六项效果参数 | 已实测 Samsung Fold7、Fold8；0.3.8-fold7.1 |
+| Android Fold · 全局版 | 在兼容 App 中用当前页面截图呈现翻折过渡 | 仅实测 Samsung Fold8；0.2.4 Beta |
 
-网页、iPhone 和 Android 只显示 App 自己的图片，不替换系统桌面或其他 App 的动画。Mac 读取实时桌面需要屏幕录制授权。Fold8 连续角度与双屏运行需要 Shizuku 授权和兼容固件，不保证所有折叠设备均可用。
+其他 Android 机型及固件未测试。全局版当前不会在 Fold7 启用双屏会话。两款 Android App 独立安装，请勿同时开启双屏效果。
+
+网页、iPhone 和 Android 图片版呈现自己的图片。全局版在本机内存中读取兼容 App 的截图，动画时画面短暂定格，不是实时视频；暂不支持桌面、最近任务、横屏和受保护页面。Android 需要分别授予 Shizuku 权限；全局版还需启用无障碍服务。Mac 实时桌面需要屏幕录制授权。
+
+[图片版使用说明](docs/android-fold/fold-zh-CN.md) · [全局版使用说明](docs/android-fold/global-zh-CN.md) · [下载两款 App](https://duo.zksaga.com/#android-fold)
 
 ## 快速开始
 
@@ -29,13 +34,13 @@ npm run check:public
 
 网页无需安装 npm 依赖，使用 Node.js 20+。原生端的构建命令、签名和硬件检查见 [构建指南](docs/BUILDING.md)。安装包不存入 Git；网页下载入口指向已经托管的版本化文件。
 
-## Fold8 设置
+## Android Fold 设置
 
-按「外屏 → 展开 / 折叠」「内屏左半边 → 展开 / 折叠」「共用」排列。每个方向分别调整开始变形角度、速度、幅度、加速度和亮度起点；两块屏幕分别设置 0–100% 磨砂及渐变强度。内屏右半边始终清晰、静止。双指长按约 0.65 秒呼出设置。
+两款 App 均保留六项调节：外屏展开变暗 / 折叠变亮角度、内屏左侧展开变亮 / 折叠变暗角度、外屏右侧压缩程度和模糊程度。自动保存，支持恢复默认。内屏右半边保持清晰、静止。图片版双指长按呼出设置；全局版回到自己的设置页调节，不显示悬浮按钮。
 
 ## 目录与验证
 
-`web/` 为网页；`DuoLikeAnimation/` 为 iPhone；`macos/` 为 Mac；`android/` 为 Fold8。文档在 `docs/`，自动化检查在 `.github/`。
+`web/` 为网页；`DuoLikeAnimation/` 为 iPhone；`macos/` 为 Mac；`android/` 为 Android 图片版；`android-global/` 为独立的全局版。文档在 `docs/`，自动化检查在 `.github/`。
 
 CI 执行网页测试与构建、Android 单元测试/lint/构建、Mac 通用构建及 iOS 模拟器构建。连续开合手感和 GPU 检查仍需真机，不能用 CI 通过替代。详见 [兼容性说明](docs/COMPATIBILITY.md)。
 

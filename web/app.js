@@ -1,8 +1,16 @@
+import {downloadCopy} from './download-copy.js';
+import {drawDesktop} from './desktop-scene.js';
+import {desktopScreens,phoneScreens} from './screen-assets.js';
+import {installPageMotion} from './page-motion.js';
+import {clampPreviewAngle,scrollPreviewAngle} from './presentation.js';
 import {referenceFragment} from './reference-glass.js';
+import {previewFragment} from './desktop-glass.js';
+import {DesktopBlur} from './desktop-blur.js';
+import {desktopOptics} from './desktop-optics.js';
+import {captureDesktopFallback,renderDesktopFallback} from './desktop-fallback.js';
 import {effectDefaults,nextBrightness} from './effect-settings.js';
 import {GlassBlur} from './glass-blur.js';
 import {screenLayout,isPhoneScreenshot} from './screen-layout.js';
-import {clampAngle} from './angles.js';
 import {smoothAngle} from './animation.js';
 import {deviceKind,motionValue} from './capabilities.js';
 const $=selector=>document.querySelector(selector),$$=selector=>[...document.querySelectorAll(selector)];
@@ -11,10 +19,15 @@ Object.assign(text.zh,{pageTitle:'折光 — Duo',pageDescription:'折光。开�
 Object.assign(text.en,{pageTitle:'Duo — Foldlight',pageDescription:'Enable phone motion to explore perspective and frosted glass as you tilt. No app needed. Your images stay on your device.'});
 Object.assign(text.zh,{macNav:'Mac 版',macTitle1:'合上屏幕。',macTitle2:'桌面随之转动。',macIntro:'在菜单栏安静运行，为实时桌面带来合盖效果。',macDownload:'下载 Mac 测试版',macBeta:'测试版 · 尚未经过 Apple 公证，首次打开可能需要在系统设置中确认。',macHelp:'安装与首次使用',macStep1:'打开下载的 DMG，将 Foldlight 拖入 Applications，再从“应用程序”打开。',macStep2:'若系统阻止打开，确认下载来源后，前往“系统设置 → 隐私与安全性”查看“仍要打开”，按提示确认。',macAppleHelp:'Apple 说明 ↗',macStep3:'点击“开启实时效果”，允许屏幕录制；若系统要求，请重新打开 App。',macStep4:'保持日常屏幕角度，点“当前位置归零”。⌃⌥⌘D 可随时暂停或开启。',macCompatibility:'合盖感应取决于设备是否提供可用传感器；不支持的型号仍可手动预览。已在 Mac14,6 / macOS 27 上实测，其他组合尚未完成实机验证。',macPrivacy:'桌面画面仅在本机处理，不保存、不上传。大角度下建议先暂停，再进行精确点击。',macReadme:'完整使用说明',macChecksum:'SHA-256 校验值'});
 Object.assign(text.en,{macNav:'Mac app',macTitle1:'Close the lid.',macTitle2:'Shift your desktop.',macIntro:'A live desktop effect, quietly running in your menu bar.',macDownload:'Download for Mac · Beta',macBeta:'Beta · Not notarized by Apple. First launch may need confirmation in System Settings.',macHelp:'Install & get started',macStep1:'Open the DMG, drag Foldlight into Applications, then open it from Applications.',macStep2:'If macOS blocks it, verify the download source, then review Open Anyway in System Settings → Privacy & Security. Follow the system prompts.',macAppleHelp:'Apple guide ↗',macStep3:'Click Start live effect and allow Screen Recording. Relaunch the app if macOS asks.',macStep4:'Hold your lid at its normal angle and click Recenter lid. Use ⌃⌥⌘D to pause or enable the effect.',macCompatibility:'Lid sensing requires an available hardware sensor. Manual preview remains available otherwise. Physically tested on Mac14,6 / macOS 27; other combinations are not yet verified.',macPrivacy:'Desktop frames stay on your Mac, without saving or uploading. Pause the effect for precise clicks at large angles.',macReadme:'Full instructions',macChecksum:'SHA-256 checksum'});
-Object.assign(text.zh,{"foldNav": "Fold8 版", "foldTitle1": "随开合。", "foldTitle2": "光影流转。", "foldIntro": "内外双屏分别选图，透视、磨砂与亮度随开合变化。", "foldDownload": "下载 Fold8 测试版", "foldCompatibility": "已实测：SM-F9710 · Android 17 · One UI 9。其他机型和固件尚未验证。", "foldBeta": "需要 Shizuku 授权。只呈现 App 内的图片效果，不替换系统桌面或其他 App 的动画。", "foldHelp": "安装与免 USB 使用", "foldStep1": "下载 APK 并安装“折光 Fold”。如有提示，只允许用于安装的浏览器或文件管理器安装此文件；已有版本可直接覆盖升级。", "foldStep2": "从官方渠道安装 Shizuku，按管理器内的引导通过无线调试配对并启动，也可连接电脑启动。", "foldShizuku": "Shizuku 官方下载与指南 ↗", "foldStep3": "打开折光 Fold，点“启用免 USB 感应”并允许 Shizuku 授权；等待手机本地辅助连接成功。", "foldStep4": "分别选择内、外屏图片，点“全屏体验”后缓慢开合。双指同时长按约 0.65 秒呼出设置。配置完成后，运行无需 USB。", "foldReboot": "手机重启后需要重新启动 Shizuku；首次无线配对请按官方指南完成，本项目已验证的是配置后的免 USB 运行。", "foldControls": "按外屏、内屏左半边分组：展开和折叠分别调节变形起始角、速度、幅度、加速度及亮度起点。每块屏幕的磨砂强度与渐变强度均可独立设为 0–100%。内屏右半边保持清晰、静止。", "foldPower": "全屏体验期间保持双屏运行，完全合拢也会维持内屏供电。结束体验请双指长按返回设置，或退出 App，以释放双屏保持。", "foldReadme": "完整中英文使用说明", "foldChecksum": "SHA-256 校验值"});
-Object.assign(text.en,{"foldNav": "Fold8 app", "foldTitle1": "Open. Close.", "foldTitle2": "Watch the light shift.", "foldIntro": "Choose a picture for each screen. Perspective, frost and brightness follow the fold.", "foldDownload": "Download for Fold8 · Beta", "foldCompatibility": "Tested: SM-F9710 · Android 17 · One UI 9. Other devices and firmware are not verified.", "foldBeta": "Requires Shizuku authorization. Renders pictures inside this app; it does not replace the home screen or other apps’ transitions.", "foldHelp": "Install & use without USB", "foldStep1": "Download the APK and install Foldlight Fold. If prompted, allow this installation from your browser or file manager. Existing users can update in place.", "foldStep2": "Install Shizuku from its official source. Follow its instructions to pair and start via wireless debugging, or start it using a computer.", "foldShizuku": "Official Shizuku download & guide ↗", "foldStep3": "Open Foldlight Fold. Use the USB-free sensing button below the blue fullscreen button and approve Shizuku access. Wait for the local helper to connect. The Android app currently uses Chinese labels.", "foldStep4": "Choose separate inner and cover images, tap the blue fullscreen button and fold slowly. Hold two fingers together for about 0.65 seconds to open settings. USB is not required after setup.", "foldReboot": "Restart Shizuku after rebooting your phone. Follow the official guide for first-time wireless pairing; this project verified USB-free operation after setup.", "foldControls": "Grouped by cover and inner left: opening and closing each have independent deformation start, speed, amplitude, acceleration and brightness start. Each screen has separate 0–100% frost and gradient controls. The inner right half stays clear and stationary.", "foldPower": "Fullscreen keeps both displays running, including power to the inner display when closed. Open settings with a two-finger hold or leave the app to release the dual-screen session.", "foldReadme": "Full instructions in English", "foldChecksum": "SHA-256 checksum"});
 Object.assign(text.zh,{compression:'边缘压缩程度',defaults:'恢复默认参数',defaultsRestored:'已恢复默认推荐参数',foldControls:'六项调节：外屏展开变暗 / 折叠变亮、内屏左侧展开变亮 / 折叠变暗的起始角度，外屏右侧压缩程度和模糊程度。推荐值依次为 80°、90°、55°、70°、60%、100%，可一键恢复。内屏右半边保持清晰、静止。'});
 Object.assign(text.en,{compression:'Edge compression',defaults:'Restore defaults',defaultsRestored:'Recommended settings restored',foldControls:'Six controls: opening and closing brightness start angles for the cover and inner left, cover right-edge compression, and blur. Recommended values: 80°, 90°, 55°, 70°, 60%, 100%. Restore them with one tap. The inner right half remains clear and stationary.'});
+Object.assign(text.zh,{heroBrand:'折光',experienceNav:'体验',downloadNav:'下载',about:'关于',phoneLine:'让视角，自然流动',desktopLine:'为桌面，添一层光',phoneDescription:'轻转手机，让熟悉的画面多一层光影。',desktopDescription:'透视、磨砂与光影，让熟悉的桌面有了新的视角。',playEffect:'播放效果',getMac:'获取 Mac 版',previewLabel:'交互效果预览',viewMode:'选择预览设备',phoneView:'手机',desktopView:'电脑',tune:'调节',wallpaper:'壁纸',fullscreen:'全屏',adjustTitle:'调到你喜欢。',reset:'重新归零',hide:'隐藏界面，只留下画面',desktopHint:'向下滚动至电脑居中，再看它慢慢合上。也可向下拖动，松手即停。',phoneHint:'左右拖动画面，也可以开启手机感应。',desktopNote:'MacBook Pro 16 英寸 · 银色 · 模拟桌面预览',phoneDesktopNote:'手机效果预览 · 手机浏览器可开启感应',desktopCanvas:'模拟电脑桌面。上下拖动调整角度。',desktopScreen:'桌面预览',desktopDefault:'恢复默认桌面',desktopAngle:'合盖预览角度',scrollHint:'向下，发现更多',storyEyebrow:'一点变化，很多感受。',storyTitle1:'清晰。柔和。',storyTitle2:'自然过渡。',feature1Title:'光影，跟着你走。',feature1Phone:'轻轻转动手机，透视与磨砂随着角度自然变化。',feature1Desktop:'在这里拖动预览。下载 Mac App，让光影随真实合盖变化。',feature2Title:'留下你喜欢的画面。',feature2Copy:'选择自己的照片或桌面截图。换一张图，就换一种感受。',feature3Title:'让画面，占满视野。',feature3Copy:'进入全屏，收起所有控件。轻点画面，随时回到这里。',nativeEyebrow:'把折光，带在身边。',nativeTitle:'为你的设备而来。',nativeCopy:'在浏览器感受光影，在 App 里跟随开合。',pageDescription:'折光 Duo。为手机与电脑呈现自然流动的透视、磨砂与光影。',aboutText:'折光是一个关于透视与磨砂的视觉实验。网页会根据设备展示手机或电脑预览，也可以手动切换。上传的图片会完整显示，并且仅在本机处理。网页不读取真实桌面；实时桌面与合盖感应由 Mac App 提供。'});
+Object.assign(text.en,{heroBrand:'Duo',experienceNav:'Experience',downloadNav:'Download',about:'About',phoneLine:'A new point of view',desktopLine:'Your desktop. In a new light',phoneDescription:'A gentle tilt. A little perspective. A whole new feeling.',desktopDescription:'Perspective, frosted glass and light. A new dimension for your desktop.',playEffect:'Play the effect',getMac:'Get the Mac app',previewLabel:'Interactive effect preview',viewMode:'Choose a preview device',phoneView:'Phone',desktopView:'Desktop',tune:'Adjust',wallpaper:'Wallpaper',fullscreen:'Fullscreen',adjustTitle:'Make it feel like you.',reset:'Recenter',hide:'Hide controls. Keep the view.',desktopHint:'Scroll until the Mac is centered, then watch it close. Or drag down and release to pause.',phoneHint:'Drag sideways, or enable motion on your phone.',desktopNote:'16-inch MacBook Pro · Silver · Simulated desktop',phoneDesktopNote:'Phone preview · Enable motion in a supported phone browser',desktopCanvas:'Simulated desktop. Drag vertically to adjust the angle.',desktopScreen:'DESKTOP PREVIEW',desktopDefault:'Restore the default desktop',desktopAngle:'Lid preview angle',scrollHint:'Scroll to discover',storyEyebrow:'A LITTLE SHIFT. A DIFFERENT FEELING.',storyTitle1:'From clear to soft.',storyTitle2:'Naturally.',feature1Title:'Light follows your lead.',feature1Phone:'Gently tilt your phone. Perspective and frosted glass follow your movement.',feature1Desktop:'Drag to preview here. Get the Mac app to let light follow your lid.',feature2Title:'A view that feels like yours.',feature2Copy:'Choose a photo or a screenshot. A different image, a different feeling.',feature3Title:'Just you and the view.',feature3Copy:'Go fullscreen and let the controls disappear. Tap the screen to come back.',nativeEyebrow:'TAKE DUO WITH YOU.',nativeTitle:'At home on your device.',nativeCopy:'Explore in your browser. Follow the fold in the app.',pageDescription:'Duo. Flowing perspective, frosted glass and light, on your phone and desktop.',aboutText:'Duo is an experiment in perspective and frosted glass. Your device chooses the initial phone or desktop preview, and you can switch views anytime. Uploaded images are displayed directly and stay on your device. The website does not capture your desktop. Live desktop and lid sensing are provided by the Mac app.'});
+Object.assign(text.zh,downloadCopy.zh);
+Object.assign(text.en,downloadCopy.en);
+const physicalDevice=deviceKind(navigator);
+let viewMode=physicalDevice,userInteracted=false,demoFrame=0,demoRevision=0;
+document.documentElement.dataset.view=viewMode;
 let lang=navigator.language.startsWith('zh')?'zh':'en',blurStrength=effectDefaults.blur,compression=effectDefaults.compression,brightnessLevel=NaN;
 try{const saved=localStorage.getItem('foldlight-language');if(saved==='zh'||saved==='en')lang=saved;const edge=localStorage.getItem('foldlight-compression');if(edge!==null&&Number.isFinite(Number(edge)))compression=Math.max(0,Math.min(1,Number(edge)));const blur=localStorage.getItem('foldlight-blur');if(blur!==null&&Number.isFinite(Number(blur)))blurStrength=Math.max(0,Math.min(1,Number(blur)))}catch{}
 Object.assign(text.zh,{customScreen:'自定义图片',realScreen:'示例主屏幕',defaultScreen:'恢复默认 示例主屏幕',imageSource:'公开源码使用 Foldlight 自制矢量示例，不包含个人桌面截图。示例随项目以 MIT 许可提供。',sourceLink:'查看图片来源 ↗'});
@@ -28,12 +41,13 @@ const standalone=()=>navigator.standalone===true||matchMedia('(display-mode: sta
 function updateFullscreenGuide(){
  const installed=standalone(),android=/Android/i.test(navigator.userAgent);
  $('#guide-context').textContent=t(installed?'guideStandalone':appleTouch?'guideContext':android?'guideAndroid':'guideOther');
- $('#guide-iphone').hidden=installed||android;
+ $('#guide-iphone').hidden=installed||!appleTouch;
  $('#guide-start').textContent=t(appleTouch&&!installed?'guidePreview':'guideStart');
  $('#guide-preview-note').hidden=installed;
 }
 function showFullscreenGuide(){updateFullscreenGuide();$('#fullscreen-dialog').showModal()}
-const t=key=>text[lang][key],stage=$('#stage'),source=$('#scene'),surface=$('#effect'),c=source.getContext('2d'),reduceMotion=matchMedia('(prefers-reduced-motion:reduce)').matches;
+const t=key=>text[lang][key],stage=$('#stage'),source=$('#scene'),surface=$('#effect'),c=source.getContext('2d'),motionPreference=matchMedia('(prefers-reduced-motion:reduce)');
+let reduceMotion=motionPreference.matches;
 Object.assign(text.zh,{screenLoading:'正在加载主屏幕…',screenRetry:'主屏幕未加载，点此重试'});
 Object.assign(text.en,{screenLoading:'Loading Home Screen…',screenRetry:'Home Screen unavailable. Tap to retry'});
 let screenLoadFailed=false;
@@ -45,7 +59,7 @@ let motionEnabled=false,motionReceived=false,motionReference=null,lastOrientatio
 if(!CanvasRenderingContext2D.prototype.roundRect)CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){r=Math.min(Number(r)||0,w/2,h/2);this.moveTo(x+r,y);this.arcTo(x+w,y,x+w,y+h,r);this.arcTo(x+w,y+h,x,y+h,r);this.arcTo(x,y+h,x,y,r);this.arcTo(x,y,x+w,y,r);this.closePath();return this};
 $$('dialog').forEach(dialog=>{if(!dialog.showModal){dialog.showModal=()=>{dialog.setAttribute('open','');dialog.classList.add('dialog-fallback')};dialog.close=()=>{dialog.removeAttribute('open');dialog.classList.remove('dialog-fallback')}}});
 function toast(key){$('#toast').textContent=t(key);$('#toast').classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('visible'),4500)}
-function updateMotionUI(){const key=motionEnabled?(motionReceived?'motionOff':'motionWaiting'):'motion';$('#motion-label').textContent=t(key);$('#motion').setAttribute('aria-pressed',String(motionEnabled));$('#motion-status').textContent=t(statusKey);$('#motion-status').classList.toggle('active',motionReceived);}
+function updateMotionUI(){const key=physicalDevice==='desktop'&&viewMode==='phone'?'playEffect':motionEnabled?(motionReceived?'motionOff':'motionWaiting'):'motion';$('#motion-label').textContent=t(key);$('#motion').setAttribute('aria-pressed',String(motionEnabled));$('#motion-status').textContent=t(viewMode==='desktop'?'desktopHint':physicalDevice==='desktop'?'phoneDesktopNote':statusKey);$('#motion-status').classList.toggle('active',motionReceived);}
 function roundRect(ctx,x,y,w,h,r,fill){ctx.beginPath();ctx.roundRect(x,y,w,h,r);if(fill){ctx.fillStyle=fill;ctx.fill()}}
 function label(ctx,s,x,y,size,color='#fff',align='left',weight=400){ctx.fillStyle=color;ctx.textAlign=align;ctx.font=`${weight} ${size}px -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",sans-serif`;ctx.fillText(s,x,y)}
 function wallpaper(ctx,w,h,theme){const palettes={coast:['#e6d9b7','#d8a98d','#416a6b','#153e49','#11323b'],dune:['#fae5c0','#d19881','#c77961','#8c514b','#412d38'],night:['#9ebec8','#7e96b7','#3c567e','#283955','#102538']};const p=palettes[theme];let g=ctx.createLinearGradient(0,0,w*.5,h);g.addColorStop(0,p[0]);g.addColorStop(.6,p[1]);g.addColorStop(1,p[2]);ctx.fillStyle=g;ctx.fillRect(0,0,w,h);const sx=w*.66,sy=h*.28,sr=Math.min(w,h)*.12;g=ctx.createRadialGradient(sx,sy,0,sx,sy,sr*2.8);g.addColorStop(0,theme==='night'?'#e5efff80':'#fff3d970');g.addColorStop(1,'#fff0');ctx.fillStyle=g;ctx.fillRect(0,0,w,h);ctx.beginPath();ctx.arc(sx,sy,sr,0,Math.PI*2);ctx.fillStyle=theme==='night'?'#eff7ed':'#fff1cf';ctx.fill();for(let layer=0;layer<4;layer++){const base=h*(.51+layer*.115);ctx.beginPath();ctx.moveTo(0,h);ctx.lineTo(0,base+h*.09);ctx.bezierCurveTo(w*.19,base-h*.18,w*.3,base+h*.22,w*.57,base-h*.02);ctx.bezierCurveTo(w*.75,base-h*.16,w*.86,base-h*.06,w,base+h*.02);ctx.lineTo(w,h);ctx.closePath();g=ctx.createLinearGradient(0,base-h*.1,w,h);g.addColorStop(0,p[Math.min(layer+1,4)]);g.addColorStop(1,p[Math.min(layer+2,4)]);ctx.fillStyle=g;ctx.fill();ctx.strokeStyle='#ffffff0c';ctx.lineWidth=1;ctx.stroke()}}
@@ -78,14 +92,15 @@ function prepareScreenTexture(img){
  ctx.putImageData(pixels,0,0);return canvas;
 }
 function loadDefaultScreen(){
- if(defaultImages.hd||defaultLoading.hd)return;
- const img=new Image();defaultLoading.hd=true;screenLoadFailed=false;img.fetchPriority='high';
- img.onload=()=>{defaultImages.hd=prepareScreenTexture(img);if(useDefaultScreen)drawScene()};
- img.onerror=()=>{defaultLoading.hd=false;screenLoadFailed=true;if(useDefaultScreen)drawScene()};
- img.src='./assets/demo-screen.svg';
+ const desktop=viewMode==='desktop',key=desktop?`desktop-${lang}`:`phone-${lang}`;
+ if((desktop&&!desktopScreens)||defaultImages[key]||defaultLoading[key])return;
+ const img=new Image();defaultLoading[key]=true;screenLoadFailed=false;img.fetchPriority='high';
+ img.onload=()=>{defaultImages[key]=prepareScreenTexture(img);if(useDefaultScreen)drawScene()};
+ img.onerror=()=>{defaultLoading[key]=false;screenLoadFailed=true;if(useDefaultScreen)drawScene()};
+ img.src=desktop?desktopScreens[lang]:(phoneScreens?.[lang]||'./assets/demo-screen.svg');
 }
 function drawImageScene(img,w,h){
- const installed=appleTouch&&(navigator.standalone===true||matchMedia('(display-mode: standalone)').matches);
+ const installed=viewMode==='phone'&&appleTouch&&(navigator.standalone===true||matchMedia('(display-mode: standalone)').matches);
  const immersed=document.body.classList.contains('immersed');
  const inset=Number.parseFloat(getComputedStyle(safeProbe).paddingTop)||0;
  const layout=screenLayout({iw:img.width,ih:img.height,w,h,immersed,installed,hasStatus:imageHasStatus,safeTop:inset});
@@ -98,60 +113,105 @@ function drawImageScene(img,w,h){
  c.drawImage(img,sx,sy,sw,sh,x,y,width,height);
 }
 function drawScene(){
- const r=stage.getBoundingClientRect();if(r.width<1||r.height<1)return;
- const scale=Math.min(devicePixelRatio||1,3,Math.sqrt(3200000/(r.width*r.height)));
+ updateMacGeometry();
+ const r={width:stage.clientWidth,height:stage.clientHeight};if(r.width<1||r.height<1)return;
+ // Retain Retina detail in small previews and native phone/fullscreen views.
+ // Cached Gaussian levels remain capped separately; this only raises the clear image resolution.
+ const scale=Math.min(Math.max(devicePixelRatio||1,2),3,Math.sqrt(8294400/(r.width*r.height)),(gl?gl.getParameter(gl.MAX_TEXTURE_SIZE):4096)/Math.max(r.width,r.height));
  source.width=surface.width=Math.round(r.width*scale);source.height=surface.height=Math.round(r.height*scale);
  const w=r.width,h=r.height;renderWidth=stage.clientWidth;renderHeight=stage.clientHeight;
  c.setTransform(source.width/w,0,0,source.height/h,0,0);
- const img=useDefaultScreen?defaultImages.hd:photo;
- const pending=useDefaultScreen&&!img;
+ const img=useDefaultScreen?(viewMode==='phone'?defaultImages[`phone-${lang}`]:defaultImages[`desktop-${lang}`]):photo;
+ const pending=useDefaultScreen&&!img&&(viewMode==='phone'||(desktopScreens&&!screenLoadFailed));
  stage.classList.toggle('screen-pending',pending);
  $('#screen-loading').hidden=!pending;$('#screen-loading').disabled=!screenLoadFailed;
  $('#screen-loading').textContent=t(screenLoadFailed?'screenRetry':'screenLoading');
  // Never substitute the old simulated desktop while the default image loads.
  if(pending){c.fillStyle='#f5f5f7';c.fillRect(0,0,w,h);uploadTexture();render();return}
  if(img){drawImageScene(img,w,h);uploadTexture();render();return}
+ if(viewMode==='desktop'){drawDesktop(c,w,h,{lang,wall:useDefaultScreen?'coast':wall});uploadTexture();render();return}
  wallpaper(c,w,h,wall);const shade=c.createLinearGradient(0,0,0,h);shade.addColorStop(0,'#041c1720');shade.addColorStop(1,'#041c170b');c.fillStyle=shade;c.fillRect(0,0,w,h);drawPhone(w,h);uploadTexture();render();
 }
 function drawPhone(w,h){const scale=w/370;c.save();c.scale(scale,scale);const H=h/scale,W=370,now=new Date();label(c,now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}),185,29,12,'#fff','center',600);label(c,'▮▮▮  ◔  ▰',W-25,29,11,'#fff','right');const start=69,cardW=145;if(H>=350){for(const x of [30,195]){roundRect(c,x,start,cardW,101,21,'#f0f1df30');c.strokeStyle='#ffffff24';c.lineWidth=1;c.stroke()}label(c,lang==='zh'?'海岸':'COAST',45,start+24,10,'#ffffffc0');label(c,'26°',45,start+67,37,'#fff','left',250);label(c,t('weather'),45,start+87,10,'#fff');c.beginPath();c.arc(142,start+54,14,0,7);c.fillStyle='#fff1b0';c.fill();label(c,now.toLocaleDateString(lang==='zh'?'zh-CN':'en-US',{month:'short',weekday:'short'}),210,start+26,10,'#ffffffbf');label(c,now.getDate(),210,start+78,47,'#fff','left',250);}const rows=H<430?1:H<520?2:3,gridTop=H<350?70:193;const iconSize=48,gapY=Math.max(73,Math.min(86,(H-292)/3));for(let i=0;i<rows*4;i++){const x=31+(i%4)*84,y=gridTop+Math.floor(i/4)*gapY;icon(c,i,x,y,iconSize);label(c,t('apps')[i],x+24,y+64,9,'#fff','center',450)}const dockY=H-84;roundRect(c,22,dockY,326,64,23,'#e2ebe13a');for(let i=0;i<4;i++)icon(c,[0,7,8,9][i],37+i*78,dockY+9,46);c.restore()}
-let gl,program,texture,uniforms,glassBlur,glassTexture;
+let gl,program,texture,uniforms,glassBlur,desktopBlur,glassTexture;
 try{gl=surface.getContext('webgl2',{alpha:false,antialias:false,depth:false,powerPreference:'low-power'});if(!gl)throw Error();const compile=(type,code)=>{const s=gl.createShader(type);gl.shaderSource(s,code);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(s));return s};program=gl.createProgram();gl.attachShader(program,compile(gl.VERTEX_SHADER,`#version 300 es
-out vec2 uv;void main(){vec2 p=vec2(float((gl_VertexID<<1)&2),float(gl_VertexID&2));uv=p;gl_Position=vec4(p*2.-1.,0,1);}`));gl.attachShader(program,compile(gl.FRAGMENT_SHADER,referenceFragment));gl.linkProgram(program);if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(program));gl.useProgram(program);uniforms=Object.fromEntries(['size','viewport','imageSize','uvScale','rotation','horizontal','moveRight','isCover','innerReveal','referenceGlass','opening','crease','frost','frostGradient','glassSigma','tilt','brightness','innerProgress','edgeDeformation','photo','glassPhoto'].map(k=>[k,gl.getUniformLocation(program,k)]));texture=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,texture);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);glassBlur=new GlassBlur(gl)}catch(e){gl=null;surface.hidden=true;surface.style.display='none';setTimeout(()=>toast('gpuFallback'),800)}
-function uploadTexture(){if(!gl)return;gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,texture);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,source);gl.generateMipmap(gl.TEXTURE_2D);glassTexture=glassBlur.build(texture,source.width,source.height)}
-function render(){brightnessLevel=nextBrightness(brightnessLevel,angle);if(gl){
+out vec2 uv;void main(){vec2 p=vec2(float((gl_VertexID<<1)&2),float(gl_VertexID&2));uv=p;gl_Position=vec4(p*2.-1.,0,1);}`));gl.attachShader(program,compile(gl.FRAGMENT_SHADER,previewFragment(referenceFragment)));gl.linkProgram(program);if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(program));gl.useProgram(program);uniforms=Object.fromEntries(['desktopProjection','desktopDepth','size','viewport','imageSize','uvScale','rotation','horizontal','moveRight','isCover','innerReveal','referenceGlass','opening','crease','frost','frostGradient','glassSigma','tilt','brightness','innerProgress','edgeDeformation','photo','glassPhoto'].map(k=>[k,gl.getUniformLocation(program,k)]));texture=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,texture);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);glassBlur=new GlassBlur(gl);desktopBlur=new DesktopBlur(gl)}catch(e){gl=null;surface.hidden=true;surface.style.display='none';setTimeout(()=>toast('gpuFallback'),800)}
+function uploadTexture(){if(!gl){if(viewMode==='desktop')captureDesktopFallback(source);return;}gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,texture);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,source);gl.generateMipmap(gl.TEXTURE_2D);glassTexture=(viewMode==='desktop'?desktopBlur:glassBlur).build(texture,source.width,source.height)}
+let visibleLidFace=null,macDeckAngle=72,desktopLayout={width:1,height:1};
+function updateMacGeometry(){
+ // Read the responsive deck angle when layout changes, not every animation frame.
+ const rootStyle=getComputedStyle(document.documentElement);
+ const value=parseFloat(rootStyle.getPropertyValue('--mac-deck-angle'));
+ macDeckAngle=Number.isFinite(value)?value:72;
+ const style=getComputedStyle(stage),perspective=parseFloat(getComputedStyle($('.phone-surround')).perspective)||0;
+ desktopLayout={width:Math.max(1,stage.clientWidth),height:Math.max(1,stage.clientHeight),
+  borderLeft:parseFloat(style.borderLeftWidth)||0,borderRight:parseFloat(style.borderRightWidth)||0,
+  borderTop:parseFloat(style.borderTopWidth)||0,borderBottom:parseFloat(style.borderBottomWidth)||0,
+  perspective,gap:perspective>0?4:0,immersed:document.body.classList.contains('immersed')};
+}
+matchMedia('(max-width:600px), (pointer:coarse) and (max-width:1024px)').addEventListener('change',()=>{updateMacGeometry();render()});
+motionPreference.addEventListener('change',()=>{reduceMotion=motionPreference.matches;stopAngleMotion();drawScene()});
+function render(){
+ // Keep input signs intact: positive phone input now uses the opposite glass edge.
+ const effectAngle=angle;
+ const lidAngle=viewMode==='desktop'?-Math.abs(angle)/120*(180-macDeckAngle):0;
+ document.documentElement.style.setProperty('--lid-angle',`${lidAngle}deg`);
+ // A parallel projection keeps mobile faces aligned without nested 3D layers.
+ document.documentElement.style.setProperty('--lid-scale',Math.cos(lidAngle*Math.PI/180));
+ // WebKit can composite a transformed child of a hidden backface in front of
+ // the screen. Cull the two faces explicitly, without changing their layout.
+ const face=lidAngle < -90 ? 'back' : 'front';
+ if(face!==visibleLidFace){
+  visibleLidFace=face;
+  document.documentElement.style.setProperty('--lid-front-visibility',face==='front'?'visible':'hidden');
+  document.documentElement.style.setProperty('--lid-back-visibility',face==='back'?'visible':'hidden');
+ }
+ brightnessLevel=nextBrightness(brightnessLevel,viewMode==='desktop'?angle*.75:angle);if(gl){
  gl.useProgram(program);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,texture);gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,glassTexture);
  const f=(k,v)=>gl.uniform1f(uniforms[k],v),i=(k,v)=>gl.uniform1i(uniforms[k],v),v=(k,x,y)=>gl.uniform2f(uniforms[k],x,y);
+ if(viewMode==='desktop'){
+  const optics=desktopOptics({...desktopLayout,angle:reduceMotion&&!desktopLayout.immersed?0:lidAngle});
+  gl.uniformMatrix3fv(uniforms.desktopProjection,false,optics.projection);
+  v('desktopDepth',...optics.depth);
+ }
  i('photo',0);i('glassPhoto',1);v('size',surface.width,surface.height);v('viewport',surface.width,surface.height);v('imageSize',source.width,source.height);v('uvScale',1,1);
- i('rotation',0);i('horizontal',0);i('moveRight',angle<0?1:0);i('isCover',1);i('innerReveal',0);i('referenceGlass',1);
- f('opening',Math.abs(angle)/90);f('crease',angle<0?0:1);f('frost',blurStrength);f('frostGradient',1);f('glassSigma',glassBlur.baseSigma);
- f('tilt',Math.abs(angle)*100/90*Math.PI/180);f('brightness',brightnessLevel);f('innerProgress',1);f('edgeDeformation',compression);
+ i('rotation',0);i('horizontal',viewMode==='desktop'?1:0);i('moveRight',viewMode==='desktop'?0:effectAngle<0?1:0);i('isCover',1);i('innerReveal',0);i('referenceGlass',1);
+ f('opening',Math.abs(angle)/(viewMode==='desktop'?120:90));f('crease',viewMode==='desktop'?1:effectAngle<0?0:1);f('frost',blurStrength);f('frostGradient',1);f('glassSigma',glassBlur.baseSigma);
+ f('tilt',Math.abs(angle)*100/(viewMode==='desktop'?120:90)*Math.PI/180);f('brightness',brightnessLevel);f('innerProgress',1);f('edgeDeformation',compression);
  gl.viewport(0,0,surface.width,surface.height);gl.drawArrays(gl.TRIANGLES,0,3);
- }else{source.style.transform=`perspective(1800px) rotateY(${angle*compression}deg)`;source.style.filter=`blur(${Math.abs(angle)*.13*blurStrength}px) brightness(${brightnessLevel})`}
+ }else if(viewMode==='desktop'){
+  source.style.transform='none';source.style.filter='none';
+  const optics=desktopOptics({...desktopLayout,angle:reduceMotion&&!desktopLayout.immersed?0:lidAngle});
+  renderDesktopFallback(source,optics,blurStrength,{immersed:desktopLayout.immersed});
+ }else{source.style.transformOrigin='center center';source.style.transform=`perspective(1800px) rotateY(${effectAngle*compression}deg)`;source.style.filter=`blur(${Math.abs(angle)*.13*blurStrength}px) brightness(${brightnessLevel})`}
 }
 // Render at the browser's native refresh cadence, independently of sensor arrival times.
 function animate(timestamp){raf=0;const dt=Math.min(64,Math.max(0,timestamp-lastFrame));lastFrame=timestamp;angle=reduceMotion?target:smoothAngle(angle,target,dt,35);if(Math.abs(target-angle)<.01)angle=target;render();if(angle!==target&&!document.hidden)raf=requestAnimationFrame(animate)}
 function scheduleFrame(){if(!raf&&!document.hidden){lastFrame=performance.now();raf=requestAnimationFrame(animate)}}
-function setAngle(value){const next=clampAngle(value);if(next===target&&angle===target)return;if(next!==target){target=next;$('#angle').value=target;$('#angle-value').value=`${Math.round(target)}°`;$('#angle-badge').textContent=`${Math.round(target)}°`;}scheduleFrame()}
+function updateAngleControls(){ $('#angle').value=target;$('#angle-value').value=`${Math.round(target)}°`;$('#angle-badge').textContent=`${Math.round(target)}°`; }
+function stopAngleMotion(){cancelAnimationFrame(raf);raf=0;target=angle;updateAngleControls()}
+function setAngle(value,{immediate=false}={}){const next=clampPreviewAngle(value,viewMode);if(next===target&&angle===target)return;if(next!==target){target=next;updateAngleControls()}if(immediate){cancelAnimationFrame(raf);raf=0;angle=target;render()}else scheduleFrame()}
 function updateBlur(){const value=Math.round(blurStrength*100);$('#blur').value=value;$('#blur-value').value=`${value}%`;}
-$('#blur').oninput=e=>{blurStrength=Number(e.target.value)/100;updateBlur();scheduleFrame();try{localStorage.setItem('foldlight-blur',String(blurStrength))}catch{}};
+$('#blur').oninput=e=>{stopDemo();userInteracted=true;blurStrength=Number(e.target.value)/100;updateBlur();scheduleFrame();try{localStorage.setItem('foldlight-blur',String(blurStrength))}catch{}};
 updateBlur();
 function updateCompression(){const value=Math.round(compression*100);$('#compression').value=value;$('#compression-value').value=`${value}%`}
-$('#compression').oninput=e=>{compression=Number(e.target.value)/100;updateCompression();scheduleFrame();try{localStorage.setItem('foldlight-compression',String(compression))}catch{}};
+$('#compression').oninput=e=>{stopDemo();userInteracted=true;compression=Number(e.target.value)/100;updateCompression();scheduleFrame();try{localStorage.setItem('foldlight-compression',String(compression))}catch{}};
 $('#defaults').onclick=()=>{blurStrength=effectDefaults.blur;compression=effectDefaults.compression;updateBlur();updateCompression();scheduleFrame();try{localStorage.setItem('foldlight-blur',String(blurStrength));localStorage.setItem('foldlight-compression',String(compression))}catch{}toast('defaultsRestored')};
 updateCompression();
-function reset(){motionReference=lastOrientation;setAngle(0);toast('calibrated')}
-function translate(){document.title=t('pageTitle');$('meta[name="description"]').content=t('pageDescription');$$('[data-href-en]').forEach(el=>el.setAttribute('href',lang==='en'?el.dataset.hrefEn:el.dataset.hrefZh));$('#status-fit').checked=imageHasStatus;$('#status-fit-options').hidden=!useDefaultScreen&&!photo;document.documentElement.lang=lang==='zh'?'zh-CN':'en';$$('[data-i18n]').forEach(el=>el.textContent=t(el.dataset.i18n));$$('[data-label]').forEach(el=>{el.setAttribute('aria-label',t(el.dataset.label));if(el.tagName==='BUTTON')el.title=t(el.dataset.label)});$('#language').textContent=lang==='zh'?'EN':'ZH';$('#language').setAttribute('aria-label',lang==='zh'?'Switch to English':'Switch to Chinese');$$('[data-wall]').forEach(el=>el.setAttribute('aria-pressed',String(!useDefaultScreen&&!photo&&el.dataset.wall===wall)));updateMotionUI();$('#screen-label').textContent=t(useDefaultScreen?'realScreen':photo?'customScreen':'simulated');$('#default-screen').setAttribute('aria-pressed',String(useDefaultScreen));loadDefaultScreen();drawScene();updateFullscreenGuide()}
+function reset(){stopDemo();userInteracted=true;motionReference=lastOrientation;setAngle(0);toast('calibrated')}
+function translate(){document.title=t('pageTitle');$('meta[name="description"]').content=t('pageDescription');$$('[data-href-en]').forEach(el=>el.setAttribute('href',lang==='en'?el.dataset.hrefEn:el.dataset.hrefZh));$('#status-fit').checked=imageHasStatus;$('#status-fit-options').hidden=viewMode==='desktop'||(!useDefaultScreen&&!photo);document.documentElement.lang=lang==='zh'?'zh-CN':'en';$$('[data-i18n]').forEach(el=>el.textContent=t(el.dataset.i18n));$$('[data-label]').forEach(el=>{el.setAttribute('aria-label',t(el.dataset.label));if(el.tagName==='BUTTON')el.title=t(el.dataset.label)});$('#language').textContent=lang==='zh'?'EN':'ZH';$('#language').setAttribute('aria-label',lang==='zh'?'Switch to English':'Switch to Chinese');$$('[data-wall]').forEach(el=>el.setAttribute('aria-pressed',String(!useDefaultScreen&&!photo&&el.dataset.wall===wall)));updateMotionUI();updatePresentation();$('#screen-label').textContent=t(photo?'customScreen':viewMode==='desktop'?'desktopScreen':useDefaultScreen?'realScreen':'simulated');$('#default-screen').setAttribute('aria-pressed',String(useDefaultScreen));loadDefaultScreen();drawScene();updateFullscreenGuide()}
 $('#language').onclick=()=>{lang=lang==='zh'?'en':'zh';try{localStorage.setItem('foldlight-language',lang)}catch{}translate()};
-$('#angle').oninput=e=>{stopMotion();setAngle(e.target.value)};$('#reset').onclick=reset;
-function immerse(value){document.body.classList.toggle('immersed',value);document.querySelector('meta[name="theme-color"]').content=value?'#071318':'#f5f5f7';requestAnimationFrame(drawScene)}
+$('#angle').oninput=e=>{stopDemo();userInteracted=true;stopMotion();setAngle(e.target.value)};$('#reset').onclick=reset;
+function immerse(value){stopDemo();userInteracted=true;document.body.classList.toggle('immersed',value);document.querySelector('meta[name="theme-color"]').content=value?'#071318':'#f5f5f7';requestAnimationFrame(drawScene)}
 async function leaveFullscreen(){if(document.fullscreenElement){try{await document.exitFullscreen()}catch{}}immerse(false)}
 async function enterFullscreen(){
  if(standalone()){immerse(true);return}
  try{if(!document.documentElement.requestFullscreen)throw Error();await document.documentElement.requestFullscreen();immerse(true)}
  catch{immerse(true);toast('fullFallback')}
 }
-$('#hide').onclick=()=>immerse(true);$('#restore').onclick=leaveFullscreen;
+$('#hide').onclick=()=>{$('#settings-dialog').close();immerse(true)};$('#restore').onclick=leaveFullscreen;
 $('#fullscreen-guide').onclick=showFullscreenGuide;
+$('#settings-toggle').onclick=()=>{$('#settings-dialog').showModal()};
 $('#guide-start').onclick=()=>{$('#fullscreen-dialog').close();enterFullscreen()};
 $('#fullscreen').onclick=()=>{if(document.fullscreenElement){leaveFullscreen();return}if(appleTouch&&!standalone()&&!document.fullscreenEnabled){showFullscreenGuide();return}enterFullscreen()};
 document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement)immerse(false)});
@@ -162,11 +222,42 @@ $('#default-screen').onclick=()=>{++uploadRevision;useDefaultScreen=true;photo=n
 $('#screen-loading').onclick=()=>{loadDefaultScreen();drawScene()};
 $('#status-fit').onchange=e=>{imageHasStatus=e.target.checked;drawScene()};
 $('#upload').onclick=()=>$('#file').click();$('#file').onchange=async e=>{const file=e.target.files?.[0];e.target.value='';if(!file)return;if(file.size>25*1024*1024){toast('imageLarge');return}if(!file.type.startsWith('image/')){toast('imageError');return}const revision=++uploadRevision;toast('imageBusy');const url=URL.createObjectURL(file);try{const img=new Image();img.src=url;await img.decode();if(!img.naturalWidth)throw Error();const cap=Math.min(1,2560/Math.max(img.naturalWidth,img.naturalHeight)),out=document.createElement('canvas');out.width=Math.round(img.naturalWidth*cap);out.height=Math.round(img.naturalHeight*cap);out.getContext('2d').drawImage(img,0,0,out.width,out.height);if(revision!==uploadRevision)return;photo=prepareScreenTexture(out);imageHasStatus=isPhoneScreenshot(img.naturalWidth,img.naturalHeight,screen.width,screen.height);useDefaultScreen=false;translate();$('#wallpaper-dialog').close();toast('imageOK')}catch{if(revision===uploadRevision)toast('imageError')}finally{URL.revokeObjectURL(url)}};
-let drag=null;stage.addEventListener('pointerdown',e=>{if(e.button>0||e.target.closest('button'))return;stage.setPointerCapture(e.pointerId);drag={x:e.clientX,y:e.clientY,angle:target,moved:false}});stage.addEventListener('pointermove',e=>{if(!drag)return;const delta=e.clientX-drag.x;if(Math.abs(delta)>5)drag.moved=true;if(drag.moved){stopMotion();setAngle(drag.angle+delta*.35)}});stage.addEventListener('pointerup',()=>{if(!drag)return;if(!drag.moved&&document.body.classList.contains('immersed'))leaveFullscreen();drag=null});stage.addEventListener('pointercancel',()=>drag=null);
-function stopMotion(key=deviceKind(navigator)==='phone'?'idle':'desktopHint'){motionRequest++;motionEnabled=false;motionReceived=false;clearInterval(motionTimer);window.removeEventListener('deviceorientation',orientation);statusKey=key;updateMotionUI()}
+let drag=null;
+const dragSurface=$('.phone-surround');
+dragSurface.addEventListener('pointerdown',e=>{
+ if(e.button>0||e.isPrimary===false||drag||e.target.closest('button'))return;
+ stopDemo();if(viewMode==='desktop'){stopAngleMotion();e.preventDefault()}
+ dragSurface.setPointerCapture(e.pointerId);
+ drag={pointerId:e.pointerId,x:e.clientX,y:e.clientY,angle:viewMode==='desktop'?angle:target,moved:false};
+});
+dragSurface.addEventListener('pointermove',e=>{
+ if(!drag||e.pointerId!==drag.pointerId)return;
+ if(e.pointerType==='mouse'&&e.buttons===0){endDrag(e);return}
+ const dx=e.clientX-drag.x,dy=e.clientY-drag.y;
+ if(Math.hypot(dx,dy)>5)drag.moved=true;
+ if(!drag.moved)return;
+ if(viewMode==='phone'&&Math.abs(dy)>Math.abs(dx)&&!document.body.classList.contains('immersed'))return;
+ userInteracted=true;stopMotion();
+ // Direct manipulation stays under the pointer, and stops on the exact pose
+ // visible at release. Positive screen Y closes a desktop lid.
+ setAngle(drag.angle+(viewMode==='desktop'?-dy*.34:dx*.35),{immediate:viewMode==='desktop'});
+});
+function endDrag(e,{allowTap=false}={}){
+ if(!drag||e.pointerId!==drag.pointerId)return;
+ const tap=!drag.moved;drag=null;
+ if(viewMode==='desktop')stopAngleMotion();
+ if(dragSurface.hasPointerCapture(e.pointerId))dragSurface.releasePointerCapture(e.pointerId);
+ if(allowTap&&tap&&document.body.classList.contains('immersed'))leaveFullscreen();
+}
+dragSurface.addEventListener('pointerup',e=>endDrag(e,{allowTap:true}));
+dragSurface.addEventListener('pointercancel',endDrag);
+dragSurface.addEventListener('lostpointercapture',endDrag);
+window.addEventListener('blur',()=>{if(drag)endDrag({pointerId:drag.pointerId})});
+
+function stopMotion(key=physicalDevice==='phone'?'idle':'desktopHint'){motionRequest++;motionEnabled=false;motionReceived=false;clearInterval(motionTimer);window.removeEventListener('deviceorientation',orientation);statusKey=key;updateMotionUI()}
 function orientation(event){if(!motionEnabled||document.hidden)return;const value=motionValue(event,screen.orientation?.angle??window.orientation??0);if(value===null)return;motionLastAt=performance.now();if(!motionReceived){motionReceived=true;statusKey='active';updateMotionUI()}lastOrientation=value;if(motionReference===null)motionReference=value;setAngle(value-motionReference)}
 $('#motion').onclick=async()=>{
- if(motionEnabled){stopMotion();return}if(deviceKind(navigator)!=='phone'){statusKey='desktopHint';updateMotionUI();toast('desktopHint');return}
+ stopDemo();userInteracted=true;if(motionEnabled){stopMotion();return}if(physicalDevice!=='phone'){playDemo();return}
  if(!window.isSecureContext){stopMotion('secure');return}
  const revision=++motionRequest;$('#motion').disabled=true;
  try{
@@ -181,6 +272,37 @@ $('#motion').onclick=async()=>{
   motionTimer=setInterval(()=>{if(!document.hidden&&performance.now()-motionLastAt>4000)stopMotion('missing')},1000);
  }catch{stopMotion('denied')}finally{$('#motion').disabled=false}
 };
-document.addEventListener('visibilitychange',()=>{if(document.hidden){cancelAnimationFrame(raf);raf=0}else{motionReference=null;motionLastAt=performance.now();drawScene();if(angle!==target)scheduleFrame()}});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){stopDemo();if(drag)endDrag({pointerId:drag.pointerId});if(viewMode==='desktop')stopAngleMotion();else{cancelAnimationFrame(raf);raf=0}}else{motionReference=null;motionLastAt=performance.now();drawScene();if(angle!==target)scheduleFrame()}});
 surface.addEventListener('webglcontextlost',e=>{e.preventDefault();cancelAnimationFrame(raf);raf=0;gl=null;surface.style.display='none';render();toast('gpuFallback')});surface.addEventListener('webglcontextrestored',()=>location.reload());
-new ResizeObserver(()=>requestAnimationFrame(drawScene)).observe(stage);translate();setInterval(()=>{if(!document.hidden)drawScene()},60000);
+function updatePresentation(){
+ const desktop=viewMode==='desktop';
+ document.documentElement.dataset.view=viewMode;
+ $('#compression').closest('.slider-control').hidden=desktop;
+ $('#hero-line').textContent=t(desktop?'desktopLine':'phoneLine');
+ $('#hero-description').textContent=t(desktop?'desktopDescription':'phoneDescription');
+ $('#scene-note').textContent=t(desktop?'desktopNote':physicalDevice==='phone'?'phoneHint':'phoneDesktopNote');
+ $('#feature1-copy').textContent=t(desktop?'feature1Desktop':'feature1Phone');
+ $('#default-screen').textContent=t(desktop?'desktopDefault':'defaultScreen');
+ surface.setAttribute('aria-label',t(desktop?'desktopCanvas':'canvas'));
+ $('label[for="angle"]').textContent=t(desktop?'desktopAngle':'angle');
+ $('#angle').min=desktop?-120:-90;$('#angle').max=desktop?0:90;
+ const labels=$('#angle').nextElementSibling;labels.firstElementChild.textContent=desktop?'−120°':'−90°';labels.lastElementChild.textContent=desktop?'0°':'+90°';
+ $('#motion-status').textContent=t(desktop?'desktopHint':physicalDevice==='desktop'?'phoneDesktopNote':statusKey);
+ $$('[data-mode]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.mode===viewMode)));
+}
+function stopDemo(){demoRevision++;cancelAnimationFrame(demoFrame);demoFrame=0;}
+function playDemo(){
+ stopDemo();stopMotion();userInteracted=true;
+ const revision=demoRevision,start=performance.now(),from=target,extent=viewMode==='desktop'?-120:38;
+ if(reduceMotion){setAngle(extent);return}
+ const ease=x=>x*x*(3-2*x);
+ function tick(now){if(revision!==demoRevision||document.hidden)return;const p=Math.min(1,(now-start)/(viewMode==='desktop'?3300:2600));const pose=p<.5?from+(extent-from)*ease(p*2):extent*(1-ease((p-.5)*2));setAngle(pose);if(p<1)demoFrame=requestAnimationFrame(tick);else demoFrame=0;}
+ demoFrame=requestAnimationFrame(tick);
+}
+$('#demo').onclick=playDemo;
+$$('[data-mode]').forEach(button=>button.onclick=()=>{if(viewMode===button.dataset.mode)return;stopDemo();stopMotion();viewMode=button.dataset.mode;userInteracted=true;angle=target=0;brightnessLevel=NaN;$('#angle').value=0;$('#angle-value').value='0°';$('#angle-badge').textContent='0°';translate()});
+let resizeFrame=0;
+new ResizeObserver(()=>{cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(drawScene)}).observe(stage);
+translate();
+installPageMotion({onProgress:progress=>{if(viewMode==='desktop'&&!motionEnabled&&!drag&&!demoFrame&&!$('dialog[open]')&&!document.body.classList.contains('immersed'))setAngle(scrollPreviewAngle(progress))}});
+setInterval(()=>{if(!document.hidden)drawScene()},60000);

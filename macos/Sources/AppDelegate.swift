@@ -283,7 +283,8 @@ import ServiceManagement
             add(row([label(tr("语言","Language"),weight:.medium),flexibleSpace(),language]));add(hairline())
             add(row([label(tr("屏幕录制权限","Screen Recording"),weight:.medium),flexibleSpace(),button(tr("系统设置…","System Settings…"),#selector(openPermissionSettings))]))
             let privacy=label(tr("画面仅在本机处理，不保存、不上传。效果层可穿透点击；大角度时请暂停效果后进行精确操作。","Frames stay on your Mac, without saving or uploading. Clicks pass through; pause the effect for precise interaction at large angles."),size:11);privacy.textColor = .secondaryLabelColor;add(privacy)
-            let version=label("Foldlight 0.2.3 · macOS",size:10);version.textColor = .tertiaryLabelColor;add(version)
+            let appVersion=Bundle.main.object(forInfoDictionaryKey:"CFBundleShortVersionString") as? String ?? ""
+            let version=label("Foldlight \(appVersion) · macOS",size:10);version.textColor = .tertiaryLabelColor;add(version)
         }
         updateLabels();updateMetrics()
     }

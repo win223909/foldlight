@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Check Git-selected files; report locations without echoing sensitive values."""
 from pathlib import Path
+import hashlib
 import re
 import subprocess
 import sys
@@ -18,6 +19,8 @@ rules = {
     'Apple device ID': re.compile(r'\b00008[0-9A-F]{3}-[0-9A-F]{16}\b'),
 }
 errors=[]
+# Reviewed raster export of the public website's vector logo, without metadata.
+reviewed_binary_hashes={'android-global/gradle/wrapper/gradle-wrapper.jar':'2db75c40782f5e8ba1fc278a5574bab070adccb2d21ca5a6e5ed840888448046','web/apple-touch-icon.png':'7b11e363e71cfbbbb8dd2549c37bd6869fc40efe6c6c9fc9e3b23b6dac4ce504'}
 for name in sorted(set(filter(None,selected))):
     if name.startswith('analytics/'):
         errors.append(f'{name}: website administration is excluded from the public repository');continue
@@ -28,7 +31,9 @@ for name in sorted(set(filter(None,selected))):
     if path.stat().st_size>2_000_000:errors.append(f'{name}: oversized source file')
     try:text=path.read_text()
     except UnicodeDecodeError:
-        if name not in {'android/gradle/wrapper/gradle-wrapper.jar','DuoLikeAnimation/Assets.xcassets/AppIcon.appiconset/AppIcon.png'}:errors.append(f'{name}: unreviewed binary')
+        if name in reviewed_binary_hashes:
+            if hashlib.sha256(path.read_bytes()).hexdigest()!=reviewed_binary_hashes[name]:errors.append(f'{name}: binary changed since review')
+        elif name not in {'android/gradle/wrapper/gradle-wrapper.jar','DuoLikeAnimation/Assets.xcassets/AppIcon.appiconset/AppIcon.png'}:errors.append(f'{name}: unreviewed binary')
         continue
     for number,line in enumerate(text.splitlines(),1):
         for label,pattern in rules.items():

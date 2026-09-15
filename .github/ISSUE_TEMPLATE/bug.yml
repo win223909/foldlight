@@ -1,12 +1,12 @@
 name: Bug report / 问题反馈
-description: Report a reproducible issue on web, iPhone, Mac or Fold8.
+description: Report a reproducible issue on web, iPhone, Mac or Android Fold.
 title: "[Bug] "
 body:
   - type: dropdown
     id: platform
     attributes:
       label: Platform / 平台
-      options: [Web, iPhone, macOS, Fold8, Analytics]
+      options: [Web, iPhone, macOS, Android Fold Photo, Android Fold Global]
     validations:
       required: true
   - type: input

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-09-15 — Android Fold downloads
+
+- Publish separate photo (0.3.8-fold7.1) and global (0.2.4 Beta) downloads with Chinese and English guides.
+- Photo edition: Samsung Fold7 and Fold8 profiles; other models untested. Global edition: Fold8 only, snapshot transitions, independent panel rendering and six saved effect controls.
+- Rename the website section to Android Fold and distinguish each edition’s tested scope.
+- Sync the deployed website loading improvements and Mac fixed-view / signing-identity fixes. Add global Android builds to CI.
+
+
 Platform versions are independent. Web changes follow source revisions.
 
 ## Fold8 0.3.7 / Web — 2026-09-12

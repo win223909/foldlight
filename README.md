@@ -15,10 +15,15 @@ Foldlight is a collection of native and web experiments inspired by [DuoLikeAnim
 | --- | --- | --- |
 | Web | Drag or tilt an image, upload your own, switch Chinese/English, enter immersive view | Modern WebGL 2 browser; HTTPS for phone motion |
 | iPhone | Native photo demo driven by device orientation | iOS 26.5+; 1.0.3 |
-| macOS | Menu bar app rendering a live desktop effect as the lid moves | macOS 13+; Apple Silicon / Intel; 0.2.4 |
-| Fold8 | Independent cover and inner images, continuous hinge tracking, per-direction controls | Android 11+ build minimum; tested on SM-F9710 / Android 17 / One UI 9; 0.3.7 |
+| macOS | Menu bar app rendering a live desktop effect as the lid moves | macOS 13+; Apple Silicon / Intel; 0.2.6 |
+| Android Fold · Photo | Separate pictures for the cover and inner screen | Tested on Samsung Fold7 and Fold8; 0.3.8-fold7.1 |
+| Android Fold · Global | Snapshot-based folding transitions across compatible apps | Tested on Samsung Fold8 only; 0.2.4 Beta |
 
-The web, iPhone and Android apps render their own images. They do **not** replace system-wide home-screen or app transitions. The Mac app needs Screen Recording permission for live desktop rendering. Fold8 continuous angle access and concurrent displays require user-authorized Shizuku and compatible Samsung firmware; support is not universal.
+Other Android models and firmware are untested. The global build does not enable its dual-screen session on Fold7. The two Android apps install separately and should not run their dual-screen effects simultaneously.
+
+The web, iPhone and Android photo edition render their own images. The global edition uses in-memory screenshots of compatible apps; content briefly freezes during transitions. It is not live video and does not support Home, Recents, landscape or protected pages. Android requires separately authorized Shizuku; the global edition also needs its Accessibility service. The Mac app needs Screen Recording permission.
+
+[Android photo guide](docs/android-fold/fold-en.md) · [Android global guide](docs/android-fold/global-en.md) · [Download both editions](https://duo.zksaga.com/#android-fold)
 
 ## Quick start
 
@@ -39,9 +44,9 @@ npm run check:public  # scan the files selected for Git
 
 Native builds and real-device checks are documented in [BUILDING.md](docs/BUILDING.md). Download links in the source website point to hosted, versioned packages; large installers are kept out of Git.
 
-## Fold8 controls
+## Android Fold controls
 
-Settings are grouped by **Cover → Opening / Closing**, **Inner left → Opening / Closing**, then shared controls. Each direction has its own deformation start, speed, amplitude, acceleration curve and brightness start. Each screen has separate 0–100% frost and gradient intensity. The inner right half stays clear and stationary. Hold two fingers for about 0.65 seconds to open settings.
+Both editions have six controls: cover opening dark-start / closing light-start angles, inner-left opening light-start / closing dark-start angles, cover right-edge compression and blur. Settings save automatically and can be reset. The inner right half stays clear and stationary. The photo edition opens settings with a two-finger hold; the global edition uses its own settings page and has no floating buttons.
 
 ## Repository
 
@@ -49,6 +54,7 @@ Settings are grouped by **Cover → Opening / Closing**, **Inner left → Openin
 - `DuoLikeAnimation/` and `.xcodeproj`: native iPhone app; the upstream target name is retained.
 - `macos/`: AppKit / SwiftUI, ScreenCaptureKit and Metal desktop app.
 - `android/`: Java / OpenGL ES app, hinge input and Shizuku service.
+- `android-global/`: separate cross-app screenshot experiment, direct EGL rendering and covered task handover.
 - `docs/`: architecture, build, compatibility and release guidance.
 - `.github/`: CI, issue forms, pull-request template and an opt-in dependency-update template.
 

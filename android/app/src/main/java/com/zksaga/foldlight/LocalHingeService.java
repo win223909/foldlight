@@ -11,6 +11,7 @@ import java.util.concurrent.TimeUnit;
 public final class LocalHingeService extends ILocalHingeService.Stub {
     private final String apk;
     private final int owner;
+    private final FoldDeviceProfile profile;
     private volatile ILocalHingeCallback callback;
     private volatile boolean closed,sampling,dualAllowed;
     private volatile long heartbeat;
@@ -19,7 +20,8 @@ public final class LocalHingeService extends ILocalHingeService.Stub {
     private final IBinder.DeathRecipient death=this::shutdown;
     public LocalHingeService(Context context){
         if(android.os.Process.myUid()!=2000)throw new SecurityException("Shell Shizuku required");
-        if(!Build.MODEL.equals("SM-F9710"))throw new IllegalStateException("Unverified fold device");
+        profile=FoldDeviceProfile.forModel(Build.MODEL);
+        if(profile==null)throw new IllegalStateException("Unverified fold device");
         apk=context.getApplicationInfo().sourceDir;owner=context.getApplicationInfo().uid;
         reader=new Thread(this::read,"Foldlight local angles");controller=new Thread(this::control,"Foldlight local displays");
         reader.start();controller.start();
@@ -80,7 +82,7 @@ public final class LocalHingeService extends ILocalHingeService.Stub {
                     if(lease==null&&failures<3&&SystemClock.elapsedRealtime()>=retryAt){
                         String state=command("/system/bin/dumpsys","device_state");
                         if(state.contains("mOverrideState=Optional.empty")&&fresh()&&dualAllowed){
-                            ProcessBuilder builder=new ProcessBuilder("/system/bin/app_process","/system/bin","DualScreenLease","0","5");
+                            ProcessBuilder builder=new ProcessBuilder("/system/bin/app_process","/system/bin","DualScreenLease","0",String.valueOf(profile.concurrentOuterState));
                             builder.environment().put("CLASSPATH",apk);
                             builder.redirectOutput(ProcessBuilder.Redirect.to(new File("/dev/null"))).redirectError(ProcessBuilder.Redirect.to(new File("/dev/null")));lease=builder.start();
                         }else retryAt=SystemClock.elapsedRealtime()+500;

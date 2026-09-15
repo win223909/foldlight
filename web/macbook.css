@@ -1,0 +1,70 @@
+/* Explicit face visibility and sibling order avoid WebKit backface/layer leaks.
+   A shared 3D hinge keeps the lid and deck the same physical size.
+   Current 16-inch MacBook Pro silhouette: Silver, notch, flat-sided chassis. */
+.device-lid{display:contents}
+.lid-back,.experience-anchor{display:none}
+html[data-view=desktop]{--mac-deck-angle:72;--laptop-width:min(620px,calc((100svh - 240px)*1.1),calc(100vw - 100px))}
+html[data-view=desktop] .hero-scroll{position:relative;height:calc(190svh + 250px)}
+html[data-view=desktop] .hero{height:100%;min-height:0;overflow:visible;position:relative;padding:38px 0 0;background:radial-gradient(ellipse at 50% 25%,#fff,#f5f5f7 70%)}
+html[data-view=desktop] .intro{margin:0 auto 46px;animation:none}
+html[data-view=desktop] .experience-anchor{display:block;height:0}
+html[data-view=desktop] .experience{position:sticky;top:var(--mac-pin-top,120px);padding:0 24px;margin:0;overflow:visible}
+html[data-view=desktop] .device-motion{width:var(--laptop-width);max-width:none;padding-bottom:calc(var(--laptop-width)*.235);transform:none;will-change:auto;position:relative}
+html[data-view=desktop] .phone-surround{width:100%;min-width:0;max-width:none;padding:0;border:0;border-radius:0;background:none;box-shadow:none;animation:none;perspective:6000px;perspective-origin:50% 100%;transform-style:preserve-3d;cursor:grab;touch-action:pan-x}
+html[data-view=desktop] .phone-surround:active{cursor:grabbing}
+html[data-view=desktop] .device-lid{display:block;position:relative;z-index:2;transform-origin:50% 100%;transform:translateZ(var(--mac-lid-gap,4px)) rotateX(var(--lid-angle,0deg));transform-style:preserve-3d;will-change:transform}
+html[data-view=desktop] .stage{visibility:var(--lid-front-visibility,visible);aspect-ratio:1.47;border:7px solid #101012;border-bottom-width:12px;border-radius:13px 13px 7px 7px;background:#09090b;box-shadow:0 0 0 1px #d1d3d5,0 0 0 2px #7d8186,0 1px 0 3px #f5f6f8;backface-visibility:hidden;-webkit-backface-visibility:hidden;touch-action:pan-x}
+html[data-view=desktop] .stage::after{content:"";position:absolute;z-index:5;top:-1px;left:44%;width:12%;height:3.1%;border-radius:0 0 6px 6px;background:#101012;pointer-events:none}
+html[data-view=desktop] .stage-caption{display:none}
+html[data-view=desktop] .lid-back{visibility:var(--lid-back-visibility,hidden);display:flex;position:absolute;inset:0;align-items:center;justify-content:center;border:1px solid #b4b8bd;border-radius:13px 13px 7px 7px;background:radial-gradient(ellipse at 16% 4%,#ffffffe0,transparent 66%),linear-gradient(128deg,#e1e3e5,#c9cccf 43%,#b4b8bd 82%,#d2d5d8);box-shadow:inset 0 0 0 1px #ffffffa8,inset 0 -2px 2px #70767c55,0 0 0 1px #686d7355;transform:rotateY(180deg) translateZ(var(--mac-back-gap,2px));backface-visibility:hidden;-webkit-backface-visibility:hidden;pointer-events:auto}
+html[data-view=desktop] .lid-back::after{content:"";position:absolute;inset:0;border-radius:inherit;background:url("/assets/macbook-lid-reference.jpg") 21% 21% / 106.3% 109.4% no-repeat;transform:rotate(180deg);pointer-events:none}
+html[data-view=desktop] .lid-back span{font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:calc(var(--laptop-width)*.072);line-height:1;color:#181b1e;transform:rotate(180deg);text-shadow:0 1px #ffffff88}
+html[data-view=desktop] .laptop-base{display:block;position:absolute;inset:100% 0 auto;width:100%;height:100%;border:1px solid #a5a9af;border-radius:7px 7px 13px 13px;background:radial-gradient(ellipse at 50% 5%,#a1a4a7,#bec1c4 52%,#d0d3d5 94%);transform-origin:50% 0;transform:rotateX(calc(var(--mac-deck-angle)*1deg));transform-style:preserve-3d;box-shadow:inset 0 0 0 1px #ffffff9c,inset 0 -2px 2px #7f858b66;z-index:1;pointer-events:auto}
+html[data-view=desktop] .laptop-base::before{content:"";position:absolute;top:0;left:6%;width:88%;height:2.3%;background:linear-gradient(#202225,#111315 65%,#51555a);border-radius:0 0 5px 5px;box-shadow:0 1px #ffffff77;z-index:3}
+/* The private design-preview asset is an unedited official product photo.
+   CSS crops its upper deck: genuine labels, keycaps, and speaker perforations.
+   Its caption/measurement line is outside this crop. */
+html[data-view=desktop] .laptop-base::after{content:"";position:absolute;z-index:2;inset:0 0 auto;height:62%;border-radius:7px 7px 0 0;background:url("/assets/macbook-deck-reference.jpg") 49.5% 5.9% / 120% 184% no-repeat;mask-image:linear-gradient(#000 92%,transparent 100%);-webkit-mask-image:linear-gradient(#000 92%,transparent 100%);pointer-events:none}
+html[data-view=desktop] .keyboard{position:absolute;z-index:1;left:11%;right:11%;top:10%;height:46%;padding:1%;display:grid;grid-template-rows:.7fr repeat(5,1fr);gap:3%;border-radius:7px;background:#18181a;box-shadow:0 0 0 1px #5e6266,0 1px 0 2px #ffffff44}
+html[data-view=desktop] .keyboard i{display:block;background:repeating-linear-gradient(90deg,#28282d 0%,#28282d 5.8%,#101012 6.05%,#101012 7.14%);border-radius:2px;box-shadow:0 1px #53535766 inset,0 -1px #000}
+html[data-view=desktop] .keyboard i:last-child{background:linear-gradient(90deg,#252529 0 21%,#101012 21% 22%,#252529 22% 70%,#101012 70% 71%,#252529 71% 100%)}
+html[data-view=desktop] .trackpad{position:absolute;left:28%;right:28%;top:57%;bottom:5%;border:1px solid #8e949a;border-bottom-color:#e0e3e6;border-radius:7px;background:linear-gradient(135deg,#b8bdc2,#c6cbd0 65%,#bec4c9);box-shadow:inset 0 1px 1px #92999f44,0 1px 0 #ffffff88;z-index:1}
+html[data-view=desktop] .front-edge{position:absolute;top:100%;left:-1px;right:-1px;height:14px;transform-origin:50% 0;transform:rotateX(calc(var(--mac-deck-angle)*-1deg));border-radius:0 0 7px 7px;background:linear-gradient(#e9ecef 0%,#aeb4ba 12%,#c7ccd2 31%,#d7dce1 54%,#afb5bc 75%,#8b929a 90%,#717982 100%);box-shadow:inset 1px 0 #ffffffaa,inset -1px 0 #656c7466,0 1px 0 #4e565f55,0 7px 12px #00000017}
+html[data-view=desktop] .front-edge::after{content:"";position:absolute;top:0;left:43%;width:14%;height:4px;border-radius:0 0 7px 7px;background:linear-gradient(#656b72,#8a919a 78%,#b7bfc6);box-shadow:0 1px #f6f8fa88}
+html[data-view=desktop] .experience-toolbar{margin-top:25px}
+html[data-view=desktop] .scene-note{margin-top:10px}
+html[data-view=desktop] .motion-status{max-width:540px;margin-left:auto;margin-right:auto;text-wrap:balance}
+html[data-view=desktop] .scroll-cue{display:none}
+/* A higher, parallel viewpoint on touch screens keeps the closed lid legible.
+   Independent flat faces avoid WebKit's nested perspective paint differences. */
+@media(max-width:600px), (pointer:coarse) and (max-width:1024px){
+ html[data-view=desktop]{--mac-deck-angle:55;--laptop-width:min(420px,calc(100vw - 80px),calc((100svh - 160px)*.8));--mac-lid-gap:calc(var(--laptop-width)*.0065);--mac-back-gap:calc(var(--laptop-width)*.0032)}
+ html[data-view=desktop] .hero{padding-top:28px}
+ html[data-view=desktop] .intro{margin-bottom:46px}
+ html[data-view=desktop] .device-motion{padding-bottom:calc(var(--laptop-width)*.47)}
+ html[data-view=desktop] .phone-surround{perspective:none;transform-style:flat}
+ html[data-view=desktop] .device-lid{transform:none;transform-style:flat;will-change:auto}
+ html[data-view=desktop] .stage{transform:scaleY(var(--lid-scale,1));transform-origin:50% 100%;backface-visibility:visible;-webkit-backface-visibility:visible;border-width:calc(var(--laptop-width)*.01);border-bottom-width:calc(var(--laptop-width)*.019);border-radius:calc(var(--laptop-width)*.024) calc(var(--laptop-width)*.024) calc(var(--laptop-width)*.014) calc(var(--laptop-width)*.014)}
+ html[data-view=desktop] .lid-back{inset:100% 0 auto;height:100%;transform:scaleY(calc(var(--lid-scale,1)*-1));transform-origin:50% 0;backface-visibility:visible;-webkit-backface-visibility:visible;border-radius:calc(var(--laptop-width)*.024);box-shadow:inset 0 0 0 1px #ffffff80,0 0 0 .5px #656b7155}
+ html[data-view=desktop] .lid-back::after,html[data-view=desktop] .lid-back span{transform:none}
+ html[data-view=desktop] .laptop-base{transform:scaleY(.5735764364);transform-style:flat}
+ html[data-view=desktop] .front-edge{height:calc(var(--laptop-width)*.027);transform:scaleY(1.7434467956)}
+ html[data-view=desktop] .experience-toolbar{margin-top:21px}
+}
+@media(prefers-reduced-motion:reduce){
+ html[data-view=desktop] .hero-scroll{height:auto!important}
+ html[data-view=desktop] .hero{height:auto;padding-bottom:32px}
+ html[data-view=desktop] .experience{position:relative;top:0}
+ html[data-view=desktop] .device-lid{transform:none!important;will-change:auto}
+ html[data-view=desktop] .stage{visibility:visible;transform:none!important}
+ html[data-view=desktop] .lid-back{visibility:hidden}
+}
+/* Immersive mode renders the image only, never the product mockup or notch. */
+html body.immersed .hero-scroll{height:100%!important;position:static}
+html body.immersed .hero{height:100%;position:static;display:block;padding:0}
+html body.immersed .experience{position:static;top:0;padding:0}
+html body.immersed .device-motion{width:100%;height:100%;padding:0}
+html body.immersed .phone-surround{width:100%;height:100%;transform:none!important;transform-style:flat;perspective:none}
+html body.immersed .device-lid{display:contents;transform:none!important;will-change:auto;perspective:none}
+html body.immersed .stage{visibility:visible;transform:none!important;width:100%;height:100%;aspect-ratio:auto;border:0;border-radius:0;box-shadow:none;touch-action:none;backface-visibility:visible}
+html body.immersed .stage::after,html body.immersed .lid-back,html body.immersed .laptop-base{display:none}

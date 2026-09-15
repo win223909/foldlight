@@ -36,7 +36,8 @@ final class ScreenPictures {
     }
     Bitmap reset(boolean cover) throws IOException {File f=file(cover);if(f.exists()&&!f.delete())throw new IOException("Unable to reset image");return DemoImage.create(cover);}
     static Bitmap fit(Bitmap source,boolean cover){
-        int width=cover?1248:2448,height=cover?1972:1848;
+        FoldDeviceProfile profile=FoldDeviceProfile.forModel(android.os.Build.MODEL);
+        int width=profile==null?(cover?1248:2448):profile.width(cover),height=profile==null?(cover?1972:1848):profile.height(cover);
         if(source.getWidth()==width&&source.getHeight()==height)return source;
         Bitmap result=Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888);
         Canvas canvas=new Canvas(result);canvas.drawColor(0xff101b2b);

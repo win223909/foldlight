@@ -78,14 +78,17 @@ final class SettingsPanel extends ScrollView {
         parent.addView(column,new LinearLayout.LayoutParams(0,-2,cover?1:1.65f));
         FrameLayout area=new FrameLayout(getContext());column.addView(area,new LinearLayout.LayoutParams(-1,dp(200)));
         FrameLayout device=new FrameLayout(getContext());device.setPadding(dp(4),dp(4),dp(4),dp(4));device.setBackground(round(0xff292a2e,cover?20:15));
-        int width=dp(cover?100:182),height=Math.round(width*(cover?1972f/1248:1848f/2448));
+        FoldDeviceProfile profile=FoldDeviceProfile.forModel(android.os.Build.MODEL);
+        int imageWidth=profile==null?(cover?1248:2448):profile.width(cover),imageHeight=profile==null?(cover?1972:1848):profile.height(cover);
+        int width=dp(cover?100:182),height=Math.round(width*(float)imageHeight/imageWidth);
+        if(height>dp(184)){width=Math.round(width*(float)dp(184)/height);height=dp(184);}
         FrameLayout.LayoutParams bounds=new FrameLayout.LayoutParams(width+dp(8),height+dp(8),Gravity.CENTER);area.addView(device,bounds);
         ImageView picture=new ImageView(getContext());picture.setScaleType(ImageView.ScaleType.CENTER_CROP);picture.setImageBitmap(image);picture.setBackground(round(0xffe6e6eb,cover?16:11));picture.setClipToOutline(true);device.addView(picture,new FrameLayout.LayoutParams(-1,-1));
         if(!cover){View seam=new View(getContext());seam.setBackgroundColor(0x403c2c28);device.addView(seam,new FrameLayout.LayoutParams(dp(1),-1,Gravity.CENTER));}
-        device.setContentDescription(cover?"更换外屏图片，竖屏":"更换内屏图片，横屏");device.setFocusable(true);device.setOnClickListener(v->actions.photo(cover));
+        device.setContentDescription((cover?"更换外屏图片，":"更换内屏图片，")+(imageHeight>imageWidth?"竖屏":"横屏"));device.setFocusable(true);device.setOnClickListener(v->actions.photo(cover));
         device.setOnTouchListener((v,event)->{if(ValueAnimator.areAnimatorsEnabled()){if(event.getAction()==MotionEvent.ACTION_DOWN)v.animate().scaleX(.97f).scaleY(.97f).setDuration(100);else if(event.getAction()==MotionEvent.ACTION_UP||event.getAction()==MotionEvent.ACTION_CANCEL)v.animate().scaleX(1).scaleY(1).setDuration(140);}return false;});
         TextView name=label(cover?"外屏图片":"内屏图片",15,INK);name.setTypeface(null,Typeface.BOLD);column.addView(name);space(column,5);
-        column.addView(label(cover?"1248 × 1972":"2448 × 1848",11,MUTED));space(column,5);
+        column.addView(label(imageWidth+" × "+imageHeight,11,MUTED));space(column,5);
         TextView change=label("轻点更换",12,BLUE);column.addView(change);change.setOnClickListener(v->actions.photo(cover));
         return picture;
     }

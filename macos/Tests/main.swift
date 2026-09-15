@@ -122,6 +122,48 @@ for step in 0...250 {
 }
 print("PASS: transparent rest, premultiplied transition pixels, near-zero noise and continuous opacity")
 
+// A stationary point on the original desktop must remain on the same observer
+// ray when the physical panel rotates. Solve the ray/lid intersection independently
+// and verify that the GPU still returns that content point's source coordinates.
+let fixedContent=SIMD2<Double>(128,75),eyeDistance=Double(h)*3,eyeHeight=Double(h)*0.5
+for degrees in [10.0,25.0,50.0] {
+    let a=degrees*Double.pi/180,contentHeight=Double(h)-fixedContent.y
+    let lidDistance=contentHeight*eyeDistance/(eyeDistance*cos(a)+(contentHeight-eyeHeight)*sin(a))
+    let depth=lidDistance*sin(a)
+    let physicalX=Double(w)*0.5+(fixedContent.x-Double(w)*0.5)*(1-depth/eyeDistance)
+    let physicalY=Double(h)-lidDistance
+    let x=Int(physicalX.rounded()),y=Int(physicalY.rounded())
+    require((0..<w).contains(x) && (0..<h).contains(y),"fixed content point remains on visible physical lid")
+    let pixel=render(-Float(degrees),0),i=(y*w+x)*4
+    require(abs(Double(pixel[i])-fixedContent.x)<=2 && abs(Double(pixel[i+1])-fixedContent.y)<=2,
+            "fixed observer sees the same content coordinate at \(degrees) degrees")
+}
+
+let white=[UInt8](repeating:255,count:w*h*4)
+source.replace(region:MTLRegionMake2D(0,0,w,h),mipmapLevel:0,withBytes:white,bytesPerRow:w*4)
+let unfogged=render(-55,0.2),whiteIndex=(40*w+160)*4
+require((0..<3).allSatisfy{unfogged[whiteIndex+$0]>=253},"defocus preserves constant light instead of adding angle-based black fog")
+source.replace(region:MTLRegionMake2D(0,0,w,h),mipmapLevel:0,withBytes:image,bytesPerRow:w*4)
+let probeDepth=Float(h-40)*sin(Float(35)*Float.pi/180)
+let sigmaPerStrength=Float(h)*1.5*probeDepth/(Float(h)*3-probeDepth)
+let kernelVariance:Float=0.92431216,boxVariance:Float=1/12
+for mip in 0...3 {
+    let sigma=sqrt(((kernelVariance+boxVariance)*pow(4,Float(mip))-boxVariance)/kernelVariance)
+    let before=render(-35,sigma/sigmaPerStrength*0.9999)
+    let after=render(-35,sigma/sigmaPerStrength*1.0001)
+    let jump=zip(before,after).map{abs(Int($0)-Int($1))}.max()!
+    require(jump<=3,"continuous Gaussian across fine/pyramid boundary \(mip), byte jump \(jump)")
+}
+var contrasts=[Double]()
+for sigma:Float in [1,2,4,8] {
+    let blurred=render(-35,sigma/sigmaPerStrength)
+    let samples=(100..<220).map{Double(blurred[(40*w+$0)*4+2])}
+    let mean=samples.reduce(0,+)/Double(samples.count)
+    contrasts.append(sqrt(samples.map{pow($0-mean,2)}.reduce(0,+)/Double(samples.count)))
+}
+require(zip(contrasts,contrasts.dropFirst()).allSatisfy{$1<$0},"Gaussian blur progressively attenuates fine detail with focal distance")
+print("PASS: fixed-observer content invariance, constant-light defocus, continuous Gaussian boundaries; contrast \(contrasts)")
+
 // Benchmark live-frame Gaussian preparation and final projection at desktop resolution.
 let largeDesc=MTLTextureDescriptor.texture2DDescriptor(pixelFormat:.bgra8Unorm,width:2560,height:1600,mipmapped:false)
 largeDesc.storageMode = .shared;largeDesc.usage=[.shaderRead,.renderTarget]

@@ -125,7 +125,7 @@ public final class MainActivity extends Activity implements SensorEventListener,
         sensorState=hingeSensor==null?"未提供标准铰链角度":"标准铰链传感器 · 等待回调";
         root=new FrameLayout(this);root.setBackgroundColor(Color.rgb(16,27,43));
         surface=new FoldSurface(this);surface.setEGLContextClientVersion(3);surface.setPreserveEGLContextOnPause(true);
-        Display initialDisplay=getDisplay();mainCover=initialDisplay!=null&&FoldMath.isCoverSurface(initialDisplay.getMode().getPhysicalWidth(),initialDisplay.getMode().getPhysicalHeight());
+        Display initialDisplay=getDisplay();mainCover=initialDisplay!=null&&FoldMath.isCoverSurface(initialDisplay.getMode().getPhysicalWidth(),initialDisplay.getMode().getPhysicalHeight(),Build.MODEL);
         if(saved==null)displayed=mainCover?0:180;renderer=new FoldRenderer(mainCover?coverImage:innerImage);renderer.split=mainCover?0:.5f;renderer.moveRight=mainCover;renderer.displayRotation=initialDisplay==null?0:initialDisplay.getRotation();
         innerLight=innerDimming.step(displayed,innerLightStart,innerDarkStart);
         coverLight=coverDimming.step(displayed,darkStart,lightStart);
@@ -307,7 +307,7 @@ public final class MainActivity extends Activity implements SensorEventListener,
         float dimmed=coverDimming.step(displayed,darkStart,lightStart);coverLight=coverDimmingEnabled?dimmed:1;
         innerLight=innerDimming.step(displayed,innerLightStart,innerDarkStart);
         if(Math.abs(previousLight-coverLight)>.00001f||Math.abs(previousInnerLight-innerLight)>.00001f)dirty=true;
-        boolean cover=FoldMath.isCoverSurface(renderer.surfaceWidth,renderer.surfaceHeight);
+        boolean cover=FoldMath.isCoverSurface(renderer.surfaceWidth,renderer.surfaceHeight,Build.MODEL);
         float renderAngle=cover?FoldMath.coverHinge(displayed):displayed;
         int rotation=getDisplay()==null?0:getDisplay().getRotation();
         if(renderer.displayRotation!=rotation){renderer.displayRotation=rotation;dirty=true;}
@@ -324,8 +324,9 @@ public final class MainActivity extends Activity implements SensorEventListener,
     private void updateStatus(){panel.update(mode,raw,bridgeConnected,logActive,photoBusy);}
     private void closeCover(){if(secondaryPresentation!=null){SecondaryPresentation old=secondaryPresentation;secondaryPresentation=null;old.dismiss();note("cover","dismissed");}}
     private void refreshCover(){
-        // USB proof is deliberately limited to the measured built-in cover, never an external monitor.
-        if(!resumed||!hidden||(!BuildConfig.DEBUG&&!localSource)||!Build.MODEL.equals("SM-F9710")){closeCover();return;}
+        // Local/USB proof is limited to the measured built-in panels, never an external monitor.
+        FoldDeviceProfile profile=FoldDeviceProfile.forModel(Build.MODEL);
+        if(!resumed||!hidden||(!BuildConfig.DEBUG&&!localSource)||profile==null){closeCover();return;}
         Display candidate=null;
         // Android excludes rear-facing internal panels from the general presentation category.
         java.util.Map<Integer,Display> panels=new java.util.HashMap<>();
@@ -333,11 +334,11 @@ public final class MainActivity extends Activity implements SensorEventListener,
         for(Display d:displays.getDisplays("android.hardware.display.category.REAR"))panels.put(d.getDisplayId(),d);
         for(Display d:panels.values()){
             Display.Mode m=d.getMode();
-            if(d.getDisplayId()!=Display.DEFAULT_DISPLAY&&((m.getPhysicalWidth()==1248&&m.getPhysicalHeight()==1972)||(m.getPhysicalWidth()==2448&&m.getPhysicalHeight()==1848))&&(d.getFlags()&Display.FLAG_PRESENTATION)!=0){candidate=d;break;}
+            if(profile.isSecondaryPanel(d.getDisplayId(),m.getPhysicalWidth(),m.getPhysicalHeight())&&(d.getFlags()&Display.FLAG_PRESENTATION)!=0){candidate=d;break;}
         }
         if(secondaryPresentation!=null&&(candidate==null||candidate.getDisplayId()!=secondaryPresentation.getDisplay().getDisplayId()||!secondaryPresentation.isShowing()))closeCover();
         if(candidate!=null&&secondaryPresentation==null)try{
-            boolean cover=FoldMath.isCoverSurface(candidate.getMode().getPhysicalWidth(),candidate.getMode().getPhysicalHeight());
+            boolean cover=profile.isCover(candidate.getMode().getPhysicalWidth(),candidate.getMode().getPhysicalHeight());
             secondaryPresentation=new SecondaryPresentation(this,candidate,cover?coverImage:innerImage,displayed,cover,coverMaxAngle,innerStrength,frost,()->setHidden(false));
             SecondaryPresentation created=secondaryPresentation;
             created.setOnDismissListener(dialog->{if(secondaryPresentation==created){secondaryPresentation=null;if(resumed)root.post(this::refreshCover);}});
